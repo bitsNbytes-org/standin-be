@@ -1,0 +1,32 @@
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    # Database settings
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "fastapi_db"
+
+    # MinIO settings
+    MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_SECURE: bool = False
+    MINIO_BUCKET_NAME: str = "fastapi-bucket"
+
+    # Application settings
+    SECRET_KEY: str = "your-secret-key-change-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    # Environment
+    ENVIRONMENT: str = "development"
+    DEBUG: bool = True
+
+    class Config:
+        env_file = ".env"
+
+
+settings = Settings()
