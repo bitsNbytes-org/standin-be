@@ -1,9 +1,13 @@
-from fastapi import FastAPI
+from typing import List
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm.session import Session
 import uvicorn
 from datetime import datetime
 
 from database import SessionLocal, engine, Base
+from models import User
+from schemas import UserResponse
 
 
 # Create database tables
@@ -47,6 +51,14 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.now(datetime.timezone.utc),
     }
+
+
+@app.get("/users/", response_model=List[UserResponse])
+async def get_users(
+    skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
+):
+    users = db.query(User).offset(skip).limit(limit).all()
+    return users
 
 
 if __name__ == "__main__":

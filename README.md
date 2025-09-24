@@ -116,18 +116,56 @@ uvicorn main:app --reload
 
 ### Database Migrations
 
-To set up Alembic for database migrations:
+This project uses **Alembic** for database migrations. Migrations are automatically handled in the Docker setup.
+
+#### How Migrations Work
+
+1. **Migration Files**: Located in `alembic/versions/` - these contain the SQL commands to modify your database schema
+2. **Automatic Setup**: When you run `docker-compose up`, migrations are automatically applied
+3. **Version Control**: Each migration has a unique ID and can be applied/rolled back
+
+#### Migration Commands
 
 ```bash
-# Initialize Alembic (run once)
-alembic init alembic
+# Create a new migration (after modifying models.py)
+alembic revision --autogenerate -m "Add new field to user table"
 
-# Create a migration
-alembic revision --autogenerate -m "Initial migration"
-
-# Apply migrations
+# Apply all pending migrations
 alembic upgrade head
+
+# Rollback to previous migration
+alembic downgrade -1
+
+# Check current migration status
+alembic current
+
+# View migration history
+alembic history
+
+# Run migrations manually in Docker
+docker-compose run migrate python migrate.py
 ```
+
+#### Adding New Fields to User Model
+
+1. Modify the `User` model in `models.py`
+2. Create a new migration:
+   ```bash
+   alembic revision --autogenerate -m "Add new field"
+   ```
+3. Review the generated migration file
+4. Apply the migration:
+   ```bash
+   alembic upgrade head
+   ```
+
+#### Migration Best Practices
+
+- Always review generated migration files before applying
+- Test migrations on a copy of production data
+- Create descriptive migration messages
+- Never edit applied migration files
+- Use `alembic downgrade` to rollback if needed
 
 ## Configuration
 

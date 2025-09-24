@@ -1,4 +1,20 @@
 services:
+  # Database Migration Service
+  migrate:
+    build: .
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=fastapi_db
+    depends_on:
+      - postgres
+    volumes:
+      - .:/app
+    command: python migrate.py
+    restart: "no"
+
   # FastAPI Application
   api:
     build: .

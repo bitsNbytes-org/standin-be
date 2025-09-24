@@ -23,26 +23,6 @@ class UserResponse(UserBase):
         from_attributes = True
 
 
-# Item schemas
-class ItemBase(BaseModel):
-    title: str
-    description: Optional[str] = None
-
-
-class ItemCreate(ItemBase):
-    owner_id: int
-
-
-class ItemResponse(ItemBase):
-    id: int
-    owner_id: int
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
-
-
 # File upload schemas
 class FileUploadResponse(BaseModel):
     message: str
