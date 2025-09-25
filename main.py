@@ -11,6 +11,7 @@ from schemas import UserResponse
 from document.api import router as document_api
 from confluence.api import router as confluence_api
 from jira.api import router as jira_api
+from meeting.api import router as meeting_api
 from project.api import router as project_api
 
 # Database tables are managed by Alembic migrations
@@ -61,6 +62,7 @@ async def get_users(
 app.include_router(document_api, prefix="/document", tags=["document"])
 app.include_router(confluence_api, prefix="/confluence", tags=["confluence"])
 app.include_router(jira_api, prefix="/jira", tags=["jira"])
+app.include_router(meeting_api, prefix="/meeting", tags=["meeting"])
 app.include_router(project_api, prefix="/project", tags=["project"])
 
 

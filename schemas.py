@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Optional, Union, List
 from fastapi import UploadFile
+from models import DocumentType
 
 
 # User schemas
@@ -42,6 +43,8 @@ class DocumentCreate(BaseModel):
     filename: str
     bucket: str = "default-bucket"
     project_id: Optional[int] = None
+    meeting_id: Optional[int] = None
+    doc_type: DocumentType = DocumentType.FILE
     external_link: Optional[str] = None
 
 
@@ -128,6 +131,8 @@ class DocumentResponse(BaseModel):
     filename: Optional[str] = None
     bucket: Optional[str] = None
     project_id: Optional[int] = None
+    meeting_id: Optional[int] = None
+    doc_type: DocumentType
     created_at: datetime
     updated_at: Optional[datetime] = None
     external_link: Optional[str] = None
@@ -141,6 +146,54 @@ class ProjectWithDocumentsResponse(ProjectResponse):
 
     class Config:
         from_attributes = True
+# Standardized Document Content Schemas
+class ConfluenceDocumentContent(BaseModel):
+    """Standardized Confluence document content structure"""
+    page_id: str
+    title: str
+    space_name: str
+    content: str
+    html_content: str
+    url: str
+    created: str
+    updated: str
+    version: int
+
+
+class JiraDocumentContent(BaseModel):
+    """Standardized JIRA document content structure"""
+    issue_key: str
+    summary: str
+    description: str
+    issue_type: str
+    status: str
+    priority: str
+    assignee: str
+    reporter: str
+    project_name: str
+    project_key: str
+    epic_name: Optional[str] = None
+    epic_link: Optional[str] = None
+    created: str
+    updated: str
+    subtasks: List[dict] = []
+    comments: List[dict] = []
+    url: str
+
+
+class FileDocumentContent(BaseModel):
+    """Standardized file document content structure"""
+    original_filename: str
+    content_type: str
+    file_size: int
+    content: str
+    extraction_method: str
+    upload_timestamp: str
+    is_text_file: bool
+    is_document_file: bool
+    source_type: str = "file"
+
+
 # Comprehensive Document API Schemas
 class DocumentImportRequest(BaseModel):
     """Unified request for importing documents from various sources"""
@@ -161,5 +214,39 @@ class DocumentImportResponse(BaseModel):
     external_link: Optional[str] = None
     message: str
     metadata: Optional[dict] = None
+
+
+# Meeting schemas
+class MeetingBase(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    meeting_link: Optional[str] = None
+    external_id: Optional[str] = None
+    participants: Optional[dict] = None
+    meta_data: Optional[dict] = None
+
+
+class MeetingCreate(MeetingBase):
+    pass
+
+
+class MeetingResponse(MeetingBase):
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    documents: List[DocumentResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class MeetingWithDocumentsResponse(MeetingResponse):
+    """Meeting response with documents included via left join"""
+    documents: List[DocumentResponse] = []
+
+    class Config:
+        from_attributes = True
 
 
