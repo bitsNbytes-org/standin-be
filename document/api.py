@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Document
+from models import Document, DocumentType
 from schemas import (
     DocumentCreate, DocumentImportRequest, DocumentImportResponse, 
     DocumentResponse, ConfluencePageRequest, JiraIssueRequest
@@ -100,7 +100,8 @@ async def _handle_url_import(url: str, include_subtasks: bool, db: Session) -> D
             content=content_data["json_content"],
             filename=content_data["filename"],
             bucket=settings.MINIO_BUCKET_NAME,
-            external_link=url
+            external_link=url,
+            doc_type=DocumentType.CONFLUENCE
         )
         
         document = document_service.create_document(document, content_data["content"])
@@ -152,7 +153,8 @@ async def _handle_url_import(url: str, include_subtasks: bool, db: Session) -> D
             content=content_data["json_content"],
             filename=content_data["filename"],
             bucket=settings.MINIO_BUCKET_NAME,
-            external_link=url
+            external_link=url,
+            doc_type=DocumentType.JIRA
         )
         
         document = document_service.create_document(document, content_data["content"])
@@ -215,7 +217,8 @@ async def _handle_file_import(file: UploadFile, filename: Optional[str], db: Ses
         content=metadata,
         filename=filename,
         bucket=settings.MINIO_BUCKET_NAME,
-        external_link=None
+        external_link=None,
+        doc_type=DocumentType.FILE
     )
     
     document = document_service.create_document(document, formatted_content)
@@ -227,6 +230,7 @@ async def _handle_file_import(file: UploadFile, filename: Optional[str], db: Ses
         filename=filename,
         bucket=settings.MINIO_BUCKET_NAME,
         external_link=None,
+        doc_type=DocumentType.FILE,
         message=f"Successfully uploaded file: {filename}",
         metadata=metadata
     )
@@ -252,7 +256,8 @@ async def _handle_content_import(content: str, filename: Optional[str], db: Sess
         content=metadata,
         filename=filename,
         bucket=settings.MINIO_BUCKET_NAME,
-        external_link=None
+        external_link=None,
+        doc_type=DocumentType.FILE
     )
     
     document = document_service.create_document(document, content)
@@ -264,6 +269,7 @@ async def _handle_content_import(content: str, filename: Optional[str], db: Sess
         filename=filename,
         bucket=settings.MINIO_BUCKET_NAME,
         external_link=None,
+        doc_type=DocumentType.FILE,
         message=f"Successfully imported content as: {filename}",
         metadata=metadata
     )
@@ -278,7 +284,8 @@ def create_document(document: DocumentCreate, db: Session = Depends(get_db)):
             content=document.content,
             filename=document.filename,
             bucket=document.bucket,
-            external_link=document.external_link
+            external_link=document.external_link,
+            doc_type=document.doc_type
         )
         
         # Store the JSON content as-is in MinIO
