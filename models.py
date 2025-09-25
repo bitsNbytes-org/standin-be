@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import JSON, JSONB
 
 
 class User(Base):
@@ -22,6 +22,7 @@ class Project(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     description = Column(String(1000), nullable=True)
+    meta_data = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationship with documents
@@ -41,7 +42,7 @@ class Meeting(Base):
     meeting_link = Column(String(255), nullable=True)
     external_id = Column(String(255), nullable=True)
     participants = Column(JSON, nullable=True)
-
+    meta_data = Column(JSONB, nullable=True)
 
 
 class Document(Base):

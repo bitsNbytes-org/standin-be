@@ -13,8 +13,8 @@ from confluence.api import router as confluence_api
 from jira.api import router as jira_api
 from project.api import router as project_api
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Database tables are managed by Alembic migrations
+# Base.metadata.create_all(bind=engine)  # Disabled automatic schema sync
 
 app = FastAPI(
     title="FastAPI Boilerplate",
