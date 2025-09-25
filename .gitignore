@@ -144,3 +144,11 @@ Thumbs.db
 # Alembic
 # alembic/versions/*.py (commented out to allow reading migration files)
 !alembic/versions/README
+
+# Google Calendar API credentials
+credentials.json
+token.json
+client_secret_*.json
+
+# Test files
+test_*.json

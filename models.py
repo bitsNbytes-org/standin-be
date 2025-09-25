@@ -33,16 +33,25 @@ class Meeting(Base):
     __tablename__ = "meetings"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(255), nullable=True)
-    description = Column(String(255), nullable=True)
-    start_time = Column(DateTime(timezone=True), nullable=True)
-    end_time = Column(DateTime(timezone=True), nullable=True)
+    title = Column(String(255), nullable=False)
+    description = Column(String(1000), nullable=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    end_time = Column(DateTime(timezone=True), nullable=False)
+    attendees = Column(JSON, nullable=True)  # List of attendee emails
+    documentation_links = Column(JSON, nullable=True)  # List of documentation URLs
+    additional_information = Column(String(2000), nullable=True)
+    meeting_link = Column(String(500), nullable=True)  # Custom meeting room link
+    google_calendar_event_id = Column(String(255), nullable=True)  # Google Calendar event ID
+    status = Column(String(50), default="scheduled")  # scheduled, completed, cancelled
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    meeting_link = Column(String(255), nullable=True)
     external_id = Column(String(255), nullable=True)
-    participants = Column(JSON, nullable=True)
+    participants = Column(JSON, nullable=True)  # Legacy field, keeping for compatibility
     meta_data = Column(JSONB, nullable=True)
+
+    # Relationship with project
+    project = relationship("Project", backref="meetings")
 
 
 class Document(Base):

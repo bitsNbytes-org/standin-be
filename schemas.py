@@ -140,3 +140,45 @@ class ProjectWithDocumentsResponse(ProjectResponse):
 
     class Config:
         from_attributes = True
+
+
+# Meeting schemas
+class MeetingBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    project_id: Optional[int] = None
+    attendees: Optional[List[str]] = []  # List of attendee emails
+    documentation_links: Optional[List[str]] = []  # List of documentation URLs
+    additional_information: Optional[str] = None
+    meeting_link: Optional[str] = None  # Custom meeting room link
+
+
+class MeetingCreate(MeetingBase):
+    start_time: datetime
+    end_time: datetime
+    documents: Optional[List[dict]] = []  # Optional documents to create
+
+
+class MeetingResponse(MeetingBase):
+    id: int
+    start_time: datetime
+    end_time: datetime
+    google_calendar_event_id: Optional[str] = None
+    status: str = "scheduled"
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class MeetingUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    attendees: Optional[List[str]] = None
+    documentation_links: Optional[List[str]] = None
+    additional_information: Optional[str] = None
+    meeting_link: Optional[str] = None
+    status: Optional[str] = None
