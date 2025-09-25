@@ -290,8 +290,5 @@ class FileProcessor:
     
     @classmethod
     def format_file_content(cls, content: str, filename: str, content_type: str) -> str:
-        """Format file content for storage with proper headers"""
-        # Add file header for all files
-        header = f"# File: {filename}\nContent-Type: {content_type}\nExtraction Method: {cls.get_extraction_method(content_type)}\nUpload Date: {datetime.utcnow().isoformat()}\n\n"
-        
-        return header + content
+        """Format file content for storage - just return the raw content"""
+        return content
