@@ -6,14 +6,15 @@ import uvicorn
 from datetime import datetime
 
 from database import engine, Base, get_db
-from models import User
+from models import User, Project
 from schemas import UserResponse
 from document.api import router as document_api
 from confluence.api import router as confluence_api
 from jira.api import router as jira_api
+from project.api import router as project_api
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Database tables are managed by Alembic migrations
+# Base.metadata.create_all(bind=engine)  # Disabled automatic schema sync
 
 app = FastAPI(
     title="FastAPI Boilerplate",
@@ -32,7 +33,6 @@ app.add_middleware(
 
 
 # Dependency to get database session
-
 
 
 @app.get("/")
@@ -59,9 +59,9 @@ async def get_users(
 
 
 app.include_router(document_api, prefix="/document", tags=["document"])
-app.include_router(confluence_api, prefix="/api", tags=["confluence"])
-app.include_router(jira_api, prefix="/api", tags=["jira"])
-
+app.include_router(confluence_api, prefix="/confluence", tags=["confluence"])
+app.include_router(jira_api, prefix="/jira", tags=["jira"])
+app.include_router(project_api, prefix="/project", tags=["project"])
 
 
 if __name__ == "__main__":
