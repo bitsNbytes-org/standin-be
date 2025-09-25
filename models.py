@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Enum
+from sqlalchemy import (
+    Column, Integer, String, DateTime, Boolean, ForeignKey, Enum
+)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
@@ -45,16 +47,17 @@ class Meeting(Base):
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
-    attendees = Column(JSON, nullable=True)  # List of attendee emails
-    documentation_links = Column(JSON, nullable=True)  # List of documentation URLs
+    attendees = Column(JSON, nullable=True)
+    documentation_links = Column(JSON, nullable=True)
     additional_information = Column(String(2000), nullable=True)
-    meeting_link = Column(String(500), nullable=True)  # Custom meeting room link
-    google_calendar_event_id = Column(String(255), nullable=True)  # Google Calendar event ID
-    status = Column(String(50), default="scheduled")  # scheduled, completed, cancelled
+    meeting_link = Column(String(500), nullable=True)
+    google_calendar_event_id = Column(String(255), nullable=True)
+    pid = Column(Integer, nullable=True)
+    status = Column(String(50), default="scheduled")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     external_id = Column(String(255), nullable=True)
-    participants = Column(JSON, nullable=True)  # Legacy field, keeping for compatibility
+    participants = Column(JSON, nullable=True)
     meta_data = Column(JSONB, nullable=True)
 
     # Relationship with project
@@ -72,7 +75,7 @@ class Document(Base):
     bucket = Column(String(255), nullable=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     meeting_id = Column(Integer, ForeignKey("meetings.id"), nullable=True)
-    doc_type = Column(Enum(DocumentType), nullable=False, default=DocumentType.FILE)
+    doc_type = Column(Enum(DocumentType), default=DocumentType.FILE, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     external_link = Column(String(255), nullable=True)

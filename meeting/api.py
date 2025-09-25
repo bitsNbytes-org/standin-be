@@ -18,7 +18,6 @@ from schemas import (
     MeetingCreate,
     MeetingResponse,
     MeetingUpdate,
-    DocumentCreate,
     DocumentImportResponse,
 )
 from google_calendar_service import GoogleCalendarService
@@ -27,6 +26,7 @@ from minio_client import upload_file_content
 from typing import List, Optional
 import json
 import logging
+import requests
 
 # Import document handling functions from document API
 try:
@@ -216,11 +216,17 @@ async def schedule_meeting(
         # Validate time range
         if meeting_data.end_time <= meeting_data.start_time:
             raise HTTPException(
-                status_code=400, 
-                detail=f"End time ({meeting_data.end_time}) must be after start time ({meeting_data.start_time})"
+                status_code=400,
+                detail=(
+                    f"End time ({meeting_data.end_time}) must be after "
+                    f"start time ({meeting_data.start_time})"
+                ),
             )
 
-        logger.info(f"Creating meeting with start_time: {meeting_data.start_time}, end_time: {meeting_data.end_time}")
+        logger.info(
+            f"Creating meeting with start_time: {meeting_data.start_time}, "
+            f"end_time: {meeting_data.end_time}"
+        )
 
         # Create meeting in database
         meeting = Meeting(
@@ -264,7 +270,8 @@ async def schedule_meeting(
         logger.info(f"Meeting {meeting.id} scheduled successfully")
         if document_response:
             logger.info(
-                f"Document {document_response.document_id} imported and linked to meeting {meeting.id}"
+                f"Document {document_response.document_id} imported and "
+                f"linked to meeting {meeting.id}"
             )
 
         return meeting
@@ -405,6 +412,78 @@ def complete_meeting(meeting_id: int, db: Session = Depends(get_db)):
     return {"message": f"Meeting {meeting_id} marked as completed"}
 
 
+EXTERNAL_SERVICE_URL = "https://a7eefabb7d57.ngrok-free.app"
+
+
+@router.post("/{meeting_id}/start", response_model=MeetingResponse)
+def start_meeting(meeting_id: int, db: Session = Depends(get_db)):
+    """Start a meeting and get a process ID from an external service."""
+    meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    if meeting.status == "started":
+        raise HTTPException(status_code=400, detail="Meeting has already started")
+
+    try:
+        response = requests.post(f"{EXTERNAL_SERVICE_URL}/start")
+        response.raise_for_status()  # Raise an exception for bad status codes
+        data = response.json()
+        pid = data.get("pid")
+
+        if pid is None:
+            raise HTTPException(
+                status_code=500, detail="Failed to get PID from external service"
+            )
+
+        meeting.status = "started"
+        meeting.pid = pid
+        db.commit()
+        db.refresh(meeting)
+
+        return meeting
+
+    except requests.exceptions.RequestException as e:
+        logger.error(
+            f"Error calling external service for starting meeting {meeting_id}: {e}"
+        )
+        raise HTTPException(status_code=502, detail="External service error")
+
+
+@router.post("/{meeting_id}/stop", response_model=MeetingResponse)
+def stop_meeting(meeting_id: int, db: Session = Depends(get_db)):
+    """Stop a meeting and notify the external service."""
+    meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    if meeting.status != "started":
+        raise HTTPException(
+            status_code=400, detail="Meeting is not in 'started' state"
+        )
+
+    if meeting.pid is None:
+        raise HTTPException(
+            status_code=400, detail="Meeting does not have a process ID"
+        )
+
+    try:
+        response = requests.post(f"{EXTERNAL_SERVICE_URL}/stop?pid={meeting.pid}")
+        response.raise_for_status()
+
+        meeting.status = "completed"
+        db.commit()
+        db.refresh(meeting)
+
+        return meeting
+
+    except requests.exceptions.RequestException as e:
+        logger.error(
+            f"Error calling external service for stopping meeting {meeting_id}: {e}"
+        )
+        raise HTTPException(status_code=502, detail="External service error")
+
+
 @router.post(
     "/{meeting_id}/documents/import", response_model=DocumentImportResponse
 )
@@ -484,7 +563,7 @@ def link_document_to_meeting(
         raise
     except Exception as e:
         logger.error(
-            f"Error linking document {document_id} to meeting {meeting_id}: {str(e)}"
+            f"Error linking document {document_id} to meeting {meeting_id}: {e}"
         )
         raise HTTPException(
             status_code=500, detail=f"Failed to link document: {str(e)}"
