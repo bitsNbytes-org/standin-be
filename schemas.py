@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-from typing import Optional, Union
+from typing import Optional, Union, List
 from fastapi import UploadFile
 
 
