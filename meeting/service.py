@@ -1,4 +1,4 @@
-from fastapi import requests
+import requests
 from config import settings
 from models import Meeting
 from database import get_db
