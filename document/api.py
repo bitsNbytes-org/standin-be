@@ -13,10 +13,18 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Document, DocumentType
 from schemas import (
-    DocumentCreate, DocumentImportRequest, DocumentImportResponse, 
-    DocumentResponse, ConfluencePageRequest, JiraIssueRequest
+    DocumentCreate,
+    DocumentImportRequest,
+    DocumentImportResponse,
+    DocumentResponse,
+    ConfluencePageRequest,
+    JiraIssueRequest,
 )
-from minio_client import download_file, upload_file_content, create_bucket_if_not_exists
+from minio_client import (
+    download_file,
+    upload_file_content,
+    create_bucket_if_not_exists,
+)
 from services.url_detector import URLDetector, SourceType
 from services.file_processor import FileProcessor
 from document.service import DocumentService
@@ -33,6 +41,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+
 @router.post("/import", response_model=DocumentImportResponse)
 async def import_document(
     source: str = Form(...),
@@ -41,59 +50,67 @@ async def import_document(
     include_subtasks: bool = Form(True),
     content: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Comprehensive document import endpoint that handles:
     - Confluence URLs (auto-detected)
-    - JIRA URLs (auto-detected) 
+    - JIRA URLs (auto-detected)
     - Raw file uploads
     - Direct content input
     """
     try:
         # Ensure bucket exists
         create_bucket_if_not_exists()
-        
+
         if source == "url" and url:
             return await _handle_url_import(url, include_subtasks, db)
-        
+
         elif source == "file" and file:
             return await _handle_file_import(file, filename, db)
-        
+
         elif source == "content" and content:
             return await _handle_content_import(content, filename, db)
-        
+
         else:
             raise HTTPException(
-                status_code=400, 
-                detail="Invalid source type or missing required parameters"
+                status_code=400,
+                detail="Invalid source type or missing required parameters",
             )
-    
+
     except Exception as e:
         logger.error(f"Error importing document: {str(e)}")
-       
-        raise HTTPException(status_code=500, detail=f"Failed to import document: {str(e)}")
+
+        raise HTTPException(
+            status_code=500, detail=f"Failed to import document: {str(e)}"
+        )
 
 
-async def _handle_url_import(url: str, include_subtasks: bool, db: Session) -> DocumentImportResponse:
+async def _handle_url_import(
+    url: str, include_subtasks: bool, db: Session
+) -> DocumentImportResponse:
     """Handle URL-based imports (Confluence/JIRA)"""
-    
+
     # Detect URL type
     url_info = URLDetector.parse_url(url)
-    
+
     if not url_info["is_valid"]:
-        raise HTTPException(status_code=400, detail="Invalid or unsupported URL")
-    
+        raise HTTPException(
+            status_code=400, detail="Invalid or unsupported URL"
+        )
+
     source_type = url_info["source_type"]
-    
+
     if source_type == SourceType.CONFLUENCE:
         if not ConfluenceService:
-            raise HTTPException(status_code=500, detail="Confluence service not available")
-        
+            raise HTTPException(
+                status_code=500, detail="Confluence service not available"
+            )
+
         confluence_service = ConfluenceService()
         page_data = confluence_service.fetch_page_by_url(url)
         content_data = confluence_service.extract_page_content(page_data, url)
-        
+
         # Create document using DocumentService
         document_service = DocumentService(db)
         document = Document(
@@ -101,11 +118,13 @@ async def _handle_url_import(url: str, include_subtasks: bool, db: Session) -> D
             filename=content_data["filename"],
             bucket=settings.MINIO_BUCKET_NAME,
             external_link=url,
-            doc_type=DocumentType.CONFLUENCE
+            doc_type=DocumentType.CONFLUENCE,
         )
-        
-        document = document_service.create_document(document, content_data["content"])
-        
+
+        document = document_service.create_document(
+            document, content_data["content"]
+        )
+
         return DocumentImportResponse(
             document_id=document.id,
             source_type="confluence",
@@ -114,39 +133,51 @@ async def _handle_url_import(url: str, include_subtasks: bool, db: Session) -> D
             bucket=settings.MINIO_BUCKET_NAME,
             external_link=url,
             message=f"Successfully imported Confluence page: {content_data['page_id']}",
-            metadata={"page_id": content_data["page_id"], "space_name": content_data["space_name"]}
+            metadata={
+                "page_id": content_data["page_id"],
+                "space_name": content_data["space_name"],
+            },
         )
-    
+
     elif source_type == SourceType.JIRA:
         if not JiraService:
-            raise HTTPException(status_code=500, detail="JIRA service not available")
-        
+            raise HTTPException(
+                status_code=500, detail="JIRA service not available"
+            )
+
         jira_service = JiraService()
-        
+
         # Check if it's a board URL or issue URL
         if url_info.get("url_type") == "board":
             # Handle board import
             board_info = url_info["identifier"]
             project_key = board_info.get("project_key")
             board_id = board_info.get("board_id")
-            
+
             if not project_key:
-                raise HTTPException(status_code=400, detail="Could not extract project key from board URL")
-            
-            content_data = jira_service.fetch_board_issues(project_key, board_id)
+                raise HTTPException(
+                    status_code=400,
+                    detail="Could not extract project key from board URL",
+                )
+
+            content_data = jira_service.fetch_board_issues(
+                project_key, board_id
+            )
         else:
             # Handle single issue import
             issue_data = jira_service.fetch_issue_by_url(url)
-            
+
             # Fetch subtasks if requested
             subtasks = []
             if include_subtasks:
                 issue_key = jira_service.extract_issue_key_from_url(url)
                 if issue_key:
                     subtasks = jira_service.fetch_issue_subtasks(issue_key)
-            
-            content_data = jira_service.format_issue_content(issue_data, subtasks)
-        
+
+            content_data = jira_service.format_issue_content(
+                issue_data, subtasks
+            )
+
         # Create document using DocumentService
         document_service = DocumentService(db)
         document = Document(
@@ -154,11 +185,13 @@ async def _handle_url_import(url: str, include_subtasks: bool, db: Session) -> D
             filename=content_data["filename"],
             bucket=settings.MINIO_BUCKET_NAME,
             external_link=url,
-            doc_type=DocumentType.JIRA
+            doc_type=DocumentType.JIRA,
         )
-        
-        document = document_service.create_document(document, content_data["content"])
-        
+
+        document = document_service.create_document(
+            document, content_data["content"]
+        )
+
         # Create appropriate response based on import type
         if url_info.get("url_type") == "board":
             return DocumentImportResponse(
@@ -169,7 +202,11 @@ async def _handle_url_import(url: str, include_subtasks: bool, db: Session) -> D
                 bucket=settings.MINIO_BUCKET_NAME,
                 external_link=url,
                 message=f"Successfully imported JIRA board: {content_data['project_key']} ({content_data['total_issues']} issues)",
-                metadata={"project_key": content_data["project_key"], "board_id": content_data.get("board_id"), "total_issues": content_data["total_issues"]}
+                metadata={
+                    "project_key": content_data["project_key"],
+                    "board_id": content_data.get("board_id"),
+                    "total_issues": content_data["total_issues"],
+                },
             )
         else:
             return DocumentImportResponse(
@@ -180,36 +217,47 @@ async def _handle_url_import(url: str, include_subtasks: bool, db: Session) -> D
                 bucket=settings.MINIO_BUCKET_NAME,
                 external_link=url,
                 message=f"Successfully imported JIRA issue: {content_data['issue_key']}",
-                metadata={"issue_key": content_data["issue_key"], "project_name": content_data.get("project_name", "Unknown")}
+                metadata={
+                    "issue_key": content_data["issue_key"],
+                    "project_name": content_data.get(
+                        "project_name", "Unknown"
+                    ),
+                },
             )
-    
+
     else:
         raise HTTPException(status_code=400, detail="Unsupported URL type")
 
 
-async def _handle_file_import(file: UploadFile, filename: Optional[str], db: Session) -> DocumentImportResponse:
+async def _handle_file_import(
+    file: UploadFile, filename: Optional[str], db: Session
+) -> DocumentImportResponse:
     """Handle file upload imports"""
-    
+
     # Validate file type
     if not FileProcessor.is_supported_file_type(file.content_type):
         raise HTTPException(
-            status_code=400, 
-            detail=f"Unsupported file type: {file.content_type}"
+            status_code=400,
+            detail=f"Unsupported file type: {file.content_type}",
         )
-    
+
     # Read file content
     content, original_filename = await FileProcessor.read_file_content(file)
-    
+
     # Generate filename if not provided
     if not filename:
-        filename = FileProcessor.generate_filename(original_filename, file.content_type)
-    
+        filename = FileProcessor.generate_filename(
+            original_filename, file.content_type
+        )
+
     # Create metadata
     metadata = FileProcessor.create_file_metadata(file, content)
     
     # Format content for storage
-    formatted_content = FileProcessor.format_file_content(content, filename, file.content_type)
-    
+    formatted_content = FileProcessor.format_file_content(
+        content, filename, file.content_type
+    )
+
     # Create document using DocumentService
     document_service = DocumentService(db)
     document = Document(
@@ -217,11 +265,11 @@ async def _handle_file_import(file: UploadFile, filename: Optional[str], db: Ses
         filename=filename,
         bucket=settings.MINIO_BUCKET_NAME,
         external_link=None,
-        doc_type=DocumentType.FILE
+        doc_type=DocumentType.FILE,
     )
-    
+
     document = document_service.create_document(document, formatted_content)
-    
+
     return DocumentImportResponse(
         document_id=document.id,
         source_type="file",
@@ -231,13 +279,15 @@ async def _handle_file_import(file: UploadFile, filename: Optional[str], db: Ses
         external_link=None,
         doc_type=DocumentType.FILE,
         message=f"Successfully uploaded file: {filename}",
-        metadata=metadata
+        metadata=metadata,
     )
 
 
-async def _handle_content_import(content: str, filename: Optional[str], db: Session) -> DocumentImportResponse:
+async def _handle_content_import(
+    content: str, filename: Optional[str], db: Session
+) -> DocumentImportResponse:
     """Handle direct content imports"""
-    
+
     if not filename:
         filename = f"content-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.txt"
     
@@ -249,7 +299,7 @@ async def _handle_content_import(content: str, filename: Optional[str], db: Sess
         "url": "",
         "source": "file"
     }
-    
+
     # Create document using DocumentService
     document_service = DocumentService(db)
     document = Document(
@@ -257,11 +307,11 @@ async def _handle_content_import(content: str, filename: Optional[str], db: Sess
         filename=filename,
         bucket=settings.MINIO_BUCKET_NAME,
         external_link=None,
-        doc_type=DocumentType.FILE
+        doc_type=DocumentType.FILE,
     )
-    
+
     document = document_service.create_document(document, content)
-    
+
     return DocumentImportResponse(
         document_id=document.id,
         source_type="content",
@@ -271,8 +321,9 @@ async def _handle_content_import(content: str, filename: Optional[str], db: Sess
         external_link=None,
         doc_type=DocumentType.FILE,
         message=f"Successfully imported content as: {filename}",
-        metadata=metadata
+        metadata=metadata,
     )
+
 
 @router.post("/", response_model=DocumentResponse)
 def create_document(document: DocumentCreate, db: Session = Depends(get_db)):
@@ -285,17 +336,19 @@ def create_document(document: DocumentCreate, db: Session = Depends(get_db)):
             filename=document.filename,
             bucket=document.bucket,
             external_link=document.external_link,
-            doc_type=document.doc_type
+            doc_type=document.doc_type,
         )
         
         # Store the content directly in MinIO
         content = str(document.content) if not isinstance(document.content, str) else document.content
         db_document = document_service.create_document(db_document, content)
         return db_document
-    
+
     except Exception as e:
         logger.error(f"Error creating document: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create document: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create document: {str(e)}"
+        )
 
 
 @router.get("/", response_model=list[DocumentResponse])
@@ -307,7 +360,9 @@ def get_documents(db: Session = Depends(get_db)):
         return documents
     except Exception as e:
         logger.error(f"Error fetching documents: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch documents: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch documents: {str(e)}"
+        )
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
@@ -323,8 +378,9 @@ def get_document(document_id: int, db: Session = Depends(get_db)):
         raise
     except Exception as e:
         logger.error(f"Error fetching document {document_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch document: {str(e)}")
-
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch document: {str(e)}"
+        )
 
 
 @router.delete("/{document_id}")
@@ -335,14 +391,16 @@ def delete_document(document_id: int, db: Session = Depends(get_db)):
         document = document_service.get_document(document_id)
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
-            
+
         document_service.delete_document(document_id)
         return {"message": f"Document {document_id} deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error deleting document {document_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete document: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete document: {str(e)}"
+        )
 
 
 @router.get("/{document_id}/download")
@@ -353,14 +411,16 @@ def download_document(document_id: int, db: Session = Depends(get_db)):
         document = document_service.get_document(document_id)
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
-            
+
         content = document_service.download_document(document_id)
         return {"content": content, "filename": document.filename}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error downloading document {document_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to download document: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to download document: {str(e)}"
+        )
 
 
 @router.post("/detect-url")
@@ -373,15 +433,19 @@ def detect_url_type(url: str):
             "source_type": url_info["source_type"],
             "is_valid": url_info["is_valid"],
             "domain": url_info["domain"],
-            "identifier": url_info["identifier"]
+            "identifier": url_info["identifier"],
         }
     except Exception as e:
         logger.error(f"Error detecting URL type: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to detect URL type: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to detect URL type: {str(e)}"
+        )
 
 
 @router.put("/{document_id}/meeting")
-def update_document_meeting(document_id: int, meeting_data: dict, db: Session = Depends(get_db)):
+def update_document_meeting(
+    document_id: int, meeting_data: dict, db: Session = Depends(get_db)
+):
     """Update document to link it to a meeting"""
     try:
         # Check if document exists
@@ -389,34 +453,43 @@ def update_document_meeting(document_id: int, meeting_data: dict, db: Session = 
         document = document_service.get_document(document_id)
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
-        
+
         # Get meeting_id from request body
         meeting_id = meeting_data.get("meeting_id")
         if meeting_id is None:
-            raise HTTPException(status_code=400, detail="meeting_id is required in request body")
-        
+            raise HTTPException(
+                status_code=400,
+                detail="meeting_id is required in request body",
+            )
+
         # Check if meeting exists
         from models import Meeting
+
         meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
         if not meeting:
             raise HTTPException(status_code=404, detail="Meeting not found")
-        
+
         # Update document with meeting_id
         document.meeting_id = meeting_id
         db.commit()
         db.refresh(document)
-        
+
         return {
             "message": f"Document {document_id} successfully linked to meeting {meeting_id}",
             "document_id": document_id,
             "meeting_id": meeting_id,
-            "document": document
+            "document": document,
         }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating document {document_id} with meeting: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to update document meeting: {str(e)}")
+        logger.error(
+            f"Error updating document {document_id} with meeting: {str(e)}"
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update document meeting: {str(e)}",
+        )
 
 
 @router.delete("/{document_id}/meeting")
@@ -428,31 +501,34 @@ def remove_document_meeting(document_id: int, db: Session = Depends(get_db)):
         document = document_service.get_document(document_id)
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
-        
+
         # Remove meeting link
         old_meeting_id = document.meeting_id
         document.meeting_id = None
         db.commit()
         db.refresh(document)
-        
+
         return {
             "message": f"Document {document_id} successfully unlinked from meeting {old_meeting_id}",
             "document_id": document_id,
             "previous_meeting_id": old_meeting_id,
-            "document": document
+            "document": document,
         }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error removing meeting link from document {document_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to remove document meeting link: {str(e)}")
+        logger.error(
+            f"Error removing meeting link from document {document_id}: {str(e)}"
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to remove document meeting link: {str(e)}",
+        )
 
 
 @router.put("/{document_id}")
 def update_document(
-    document_id: int, 
-    document_update: dict, 
-    db: Session = Depends(get_db)
+    document_id: int, document_update: dict, db: Session = Depends(get_db)
 ):
     """Update document fields (including meeting_id, doc_type, etc.)"""
     try:
@@ -461,31 +537,42 @@ def update_document(
         document = document_service.get_document(document_id)
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
-        
+
         # Validate meeting_id if provided
-        if "meeting_id" in document_update and document_update["meeting_id"] is not None:
+        if (
+            "meeting_id" in document_update
+            and document_update["meeting_id"] is not None
+        ):
             from models import Meeting
-            meeting = db.query(Meeting).filter(Meeting.id == document_update["meeting_id"]).first()
+
+            meeting = (
+                db.query(Meeting)
+                .filter(Meeting.id == document_update["meeting_id"])
+                .first()
+            )
             if not meeting:
-                raise HTTPException(status_code=404, detail="Meeting not found")
-        
+                raise HTTPException(
+                    status_code=404, detail="Meeting not found"
+                )
+
         # Update document fields
         for field, value in document_update.items():
             if hasattr(document, field):
                 setattr(document, field, value)
-        
+
         db.commit()
         db.refresh(document)
-        
+
         return {
             "message": f"Document {document_id} updated successfully",
             "document_id": document_id,
             "updated_fields": list(document_update.keys()),
-            "document": document
+            "document": document,
         }
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error updating document {document_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to update document: {str(e)}")
-
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update document: {str(e)}"
+        )

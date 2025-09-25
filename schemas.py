@@ -159,15 +159,27 @@ class DocumentContent(BaseModel):
 # Comprehensive Document API Schemas
 class DocumentImportRequest(BaseModel):
     """Unified request for importing documents from various sources"""
-    source: str = Field(..., description="Source type: 'url', 'file', or 'content'")
-    url: Optional[str] = Field(None, description="URL for Confluence or JIRA links")
-    filename: Optional[str] = Field(None, description="Custom filename (auto-generated if not provided)")
-    include_subtasks: bool = Field(True, description="Include subtasks for JIRA issues")
-    content: Optional[str] = Field(None, description="Raw content for direct import")
+
+    source: str = Field(
+        ..., description="Source type: 'url', 'file', or 'content'"
+    )
+    url: Optional[str] = Field(
+        None, description="URL for Confluence or JIRA links"
+    )
+    filename: Optional[str] = Field(
+        None, description="Custom filename (auto-generated if not provided)"
+    )
+    include_subtasks: bool = Field(
+        True, description="Include subtasks for JIRA issues"
+    )
+    content: Optional[dict] = Field(
+        None, description="Raw content for direct import"
+    )
 
 
 class DocumentImportResponse(BaseModel):
     """Unified response for document imports"""
+
     document_id: int
     source_type: str
     title: str
@@ -180,22 +192,33 @@ class DocumentImportResponse(BaseModel):
 
 # Meeting schemas
 class MeetingBase(BaseModel):
-    title: Optional[str] = None
+    title: str
     description: Optional[str] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    meeting_link: Optional[str] = None
-    external_id: Optional[str] = None
-    participants: Optional[dict] = None
-    meta_data: Optional[dict] = None
+    project_id: Optional[int] = None
+    attendees: Optional[List[str]] = []  # List of attendee emails
+    documentation_links: Optional[List[str]] = []  # List of documentation URLs
+    additional_information: Optional[str] = None
 
 
 class MeetingCreate(MeetingBase):
-    pass
+    start_time: datetime
+    end_time: datetime
+    meeting_link: Optional[str] = None  # Custom meeting room link
+    # Document import fields
+    document_source: Optional[str] = None  # "url", "file", "content"
+    document_url: Optional[str] = None
+    document_filename: Optional[str] = None
+    document_content: Optional[str] = None
+    include_subtasks: bool = True
 
 
 class MeetingResponse(MeetingBase):
     id: int
+    start_time: datetime
+    end_time: datetime
+    meeting_link: Optional[str] = None
+    google_calendar_event_id: Optional[str] = None
+    status: str = "scheduled"
     created_at: datetime
     updated_at: Optional[datetime] = None
     documents: List[DocumentResponse] = []
@@ -204,11 +227,13 @@ class MeetingResponse(MeetingBase):
         from_attributes = True
 
 
-class MeetingWithDocumentsResponse(MeetingResponse):
-    """Meeting response with documents included via left join"""
-    documents: List[DocumentResponse] = []
-
-    class Config:
-        from_attributes = True
-
-
+class MeetingUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    attendees: Optional[List[str]] = None
+    documentation_links: Optional[List[str]] = None
+    additional_information: Optional[str] = None
+    meeting_link: Optional[str] = None
+    status: Optional[str] = None
