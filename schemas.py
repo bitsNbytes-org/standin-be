@@ -39,7 +39,7 @@ class FileListResponse(BaseModel):
 
 
 class DocumentCreate(BaseModel):
-    content: dict
+    content: str  # Changed from dict to str
     filename: str
     bucket: str = "default-bucket"
     project_id: Optional[int] = None
@@ -127,7 +127,7 @@ class ProjectResponse(ProjectBase):
 
 class DocumentResponse(BaseModel):
     id: int
-    content: Optional[dict] = None
+    content: Optional[str] = None  # Changed from dict to str
     filename: Optional[str] = None
     bucket: Optional[str] = None
     project_id: Optional[int] = None
@@ -146,52 +146,14 @@ class ProjectWithDocumentsResponse(ProjectResponse):
 
     class Config:
         from_attributes = True
-# Standardized Document Content Schemas
-class ConfluenceDocumentContent(BaseModel):
-    """Standardized Confluence document content structure"""
+# Simplified Document Content Schema
+class DocumentContent(BaseModel):
+    """Simplified document content structure"""
     page_id: str
     title: str
-    space_name: str
     content: str
-    html_content: str
     url: str
-    created: str
-    updated: str
-    version: int
-
-
-class JiraDocumentContent(BaseModel):
-    """Standardized JIRA document content structure"""
-    issue_key: str
-    summary: str
-    description: str
-    issue_type: str
-    status: str
-    priority: str
-    assignee: str
-    reporter: str
-    project_name: str
-    project_key: str
-    epic_name: Optional[str] = None
-    epic_link: Optional[str] = None
-    created: str
-    updated: str
-    subtasks: List[dict] = []
-    comments: List[dict] = []
-    url: str
-
-
-class FileDocumentContent(BaseModel):
-    """Standardized file document content structure"""
-    original_filename: str
-    content_type: str
-    file_size: int
-    content: str
-    extraction_method: str
-    upload_timestamp: str
-    is_text_file: bool
-    is_document_file: bool
-    source_type: str = "file"
+    source: str  # jira, confluence, file
 
 
 # Comprehensive Document API Schemas
@@ -201,7 +163,7 @@ class DocumentImportRequest(BaseModel):
     url: Optional[str] = Field(None, description="URL for Confluence or JIRA links")
     filename: Optional[str] = Field(None, description="Custom filename (auto-generated if not provided)")
     include_subtasks: bool = Field(True, description="Include subtasks for JIRA issues")
-    content: Optional[dict] = Field(None, description="Raw content for direct import")
+    content: Optional[str] = Field(None, description="Raw content for direct import")
 
 
 class DocumentImportResponse(BaseModel):

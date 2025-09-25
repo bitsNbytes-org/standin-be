@@ -116,12 +116,8 @@ class ConfluenceService:
             "json_content": {
                 "page_id": page_id,
                 "title": title,
-                "space_name": space_name,
                 "content": text_content,
-                "html_content": body_html,
                 "url": url,
-                "created": page_data.get("created", ""),
-                "updated": page_data.get("updated", ""),
-                "version": page_data.get("version", {}).get("number", 1)
+                "source": "confluence"
             }
         }

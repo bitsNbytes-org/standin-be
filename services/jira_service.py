@@ -97,71 +97,42 @@ class JiraService:
         if description:
             description = self.clean_html_content(description)
         
-        # Build content
+        # Build simple content summary
         content_lines = [
-            f"# JIRA Issue: {issue_key}",
+            f"JIRA Issue: {issue_key}",
+            f"Summary: {summary}",
+            f"Type: {issue_type}",
+            f"Status: {status}",
+            f"Priority: {priority}",
+            f"Assignee: {assignee}",
+            f"Project: {project_name}",
             f"",
-            f"**Summary:** {summary}",
-            f"**Type:** {issue_type}",
-            f"**Status:** {status}",
-            f"**Priority:** {priority}",
-            f"**Assignee:** {assignee}",
-            f"**Reporter:** {reporter}",
-            f"**Project:** {project_name} ({project_key})",
-            f"**Created:** {created}",
-            f"**Updated:** {updated}",
-            f"",
-            f"## Description",
-            f"{description}",
-            f""
+            f"Description: {description}"
         ]
         
         # Add subtasks if available
         if subtasks:
-            content_lines.extend([
-                f"## Subtasks",
-                f""
-            ])
+            content_lines.append("")
+            content_lines.append("Subtasks:")
             for subtask in subtasks:
                 subtask_fields = subtask.get("fields", {})
                 subtask_key = subtask.get("key", "Unknown")
                 subtask_summary = subtask_fields.get("summary", "No summary")
                 subtask_status = subtask_fields.get("status", {}).get("name", "Unknown")
-                content_lines.extend([
-                    f"- **{subtask_key}:** {subtask_summary} ({subtask_status})"
-                ])
-            content_lines.append("")
+                content_lines.append(f"- {subtask_key}: {subtask_summary} ({subtask_status})")
         
         # Create filename
         safe_summary = re.sub(r'[^\w\s-]', '', summary).strip()
         safe_summary = re.sub(r'[-\s]+', '-', safe_summary)
         filename = f"jira-{issue_key}-{safe_summary}.txt"
         
-        # Create JSON content for database storage (standardized format)
+        # Create JSON content for database storage (simplified format)
         json_content = {
-            "issue_key": issue_key,
-            "summary": summary,
-            "description": description,
-            "issue_type": issue_type,
-            "status": status,
-            "priority": priority,
-            "assignee": assignee,
-            "reporter": reporter,
-            "project_name": project_name,
-            "project_key": project_key,
-            "epic_name": fields.get("customfield_10015", "No epic"),  # Epic Name field
-            "epic_link": fields.get("customfield_10014", "No epic"),  # Epic Link field
-            "created": created,
-            "updated": updated,
-            "subtasks": [
-                {
-                    "key": st.get("key"),
-                    "summary": st.get("fields", {}).get("summary"),
-                    "status": st.get("fields", {}).get("status", {}).get("name")
-                } for st in subtasks
-            ] if subtasks else [],
-            "comments": [],  # Will be populated if comments are fetched
-            "url": f"{self.base_url}/browse/{issue_key}"
+            "page_id": issue_key,  # Using issue_key as page_id for consistency
+            "title": summary,
+            "content": "\n".join(content_lines),
+            "url": f"{self.base_url}/browse/{issue_key}",
+            "source": "jira"
         }
         
         return {
