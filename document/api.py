@@ -114,7 +114,7 @@ async def _handle_url_import(
         # Create document using DocumentService
         document_service = DocumentService(db)
         document = Document(
-            content=content_data["json_content"],
+            content=content_data["content"],  # Store text content directly
             filename=content_data["filename"],
             bucket=settings.MINIO_BUCKET_NAME,
             external_link=url,
@@ -181,7 +181,7 @@ async def _handle_url_import(
         # Create document using DocumentService
         document_service = DocumentService(db)
         document = Document(
-            content=content_data["json_content"],
+            content=content_data["content"],  # Store text content directly
             filename=content_data["filename"],
             bucket=settings.MINIO_BUCKET_NAME,
             external_link=url,
@@ -252,8 +252,7 @@ async def _handle_file_import(
 
     # Create metadata
     metadata = FileProcessor.create_file_metadata(file, content)
-    metadata["upload_timestamp"] = datetime.utcnow().isoformat()
-
+    
     # Format content for storage
     formatted_content = FileProcessor.format_file_content(
         content, filename, file.content_type
@@ -262,7 +261,7 @@ async def _handle_file_import(
     # Create document using DocumentService
     document_service = DocumentService(db)
     document = Document(
-        content=metadata,
+        content=formatted_content,  # Store text content directly
         filename=filename,
         bucket=settings.MINIO_BUCKET_NAME,
         external_link=None,
@@ -291,19 +290,20 @@ async def _handle_content_import(
 
     if not filename:
         filename = f"content-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.txt"
-
-    # Create metadata
+    
+    # Create metadata (simplified format)
     metadata = {
-        "source_type": "content",
-        "content_length": len(content),
-        "upload_timestamp": datetime.utcnow().isoformat(),
-        "is_text_content": True,
+        "page_id": f"content-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}",
+        "title": filename,
+        "content": content,
+        "url": "",
+        "source": "file"
     }
 
     # Create document using DocumentService
     document_service = DocumentService(db)
     document = Document(
-        content=metadata,
+        content=content,  # Store text content directly
         filename=filename,
         bucket=settings.MINIO_BUCKET_NAME,
         external_link=None,
@@ -338,9 +338,9 @@ def create_document(document: DocumentCreate, db: Session = Depends(get_db)):
             external_link=document.external_link,
             doc_type=document.doc_type,
         )
-
-        # Store the JSON content as-is in MinIO
-        content = json.dumps(document.content, indent=2)
+        
+        # Store the content directly in MinIO
+        content = str(document.content) if not isinstance(document.content, str) else document.content
         db_document = document_service.create_document(db_document, content)
         return db_document
 

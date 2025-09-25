@@ -254,19 +254,15 @@ class FileProcessor:
     
     @classmethod
     def create_file_metadata(cls, file: UploadFile, content: str) -> Dict[str, Any]:
-        """Create metadata for uploaded file (standardized format)"""
+        """Create metadata for uploaded file (simplified format)"""
         file_info = cls.get_file_info(file)
         
         metadata = {
-            "original_filename": file_info["filename"],
-            "content_type": file_info["content_type"],
-            "file_size": len(content.encode('utf-8')),
+            "page_id": f"file-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}",  # Generate unique ID
+            "title": file_info["filename"] or "Uploaded File",
             "content": content,
-            "extraction_method": cls.get_extraction_method(file_info["content_type"]),
-            "upload_timestamp": datetime.utcnow().isoformat(),
-            "is_text_file": cls.is_text_file(file_info["content_type"]),
-            "is_document_file": file_info["content_type"] in cls.SUPPORTED_DOCUMENT_TYPES,
-            "source_type": "file"
+            "url": "",  # No external URL for uploaded files
+            "source": "file"
         }
         
         return metadata
