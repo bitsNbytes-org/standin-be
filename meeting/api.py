@@ -478,8 +478,10 @@ def start_meeting(meeting_id: int, db: Session = Depends(get_db)):
             status_code=400, detail="Meeting has already started"
         )
 
+    # add body to the request
+    body = meeting.meta_data
     try:
-        response = requests.post(f"{EXTERNAL_SERVICE_URL}/start")
+        response = requests.post(f"{EXTERNAL_SERVICE_URL}/start", json=body)
         response.raise_for_status()  # Raise an exception for bad status codes
         data = response.json()
         pid = data.get("pid")
