@@ -137,8 +137,8 @@ class JiraService:
         safe_summary = re.sub(r'[-\s]+', '-', safe_summary)
         filename = f"jira-{issue_key}-{safe_summary}.txt"
         
-        # Create JSON content for database storage
-        content = {
+        # Create JSON content for database storage (standardized format)
+        json_content = {
             "issue_key": issue_key,
             "summary": summary,
             "description": description,
@@ -149,6 +149,8 @@ class JiraService:
             "reporter": reporter,
             "project_name": project_name,
             "project_key": project_key,
+            "epic_name": fields.get("customfield_10015", "No epic"),  # Epic Name field
+            "epic_link": fields.get("customfield_10014", "No epic"),  # Epic Link field
             "created": created,
             "updated": updated,
             "subtasks": [
@@ -157,7 +159,9 @@ class JiraService:
                     "summary": st.get("fields", {}).get("summary"),
                     "status": st.get("fields", {}).get("status", {}).get("name")
                 } for st in subtasks
-            ] if subtasks else []
+            ] if subtasks else [],
+            "comments": [],  # Will be populated if comments are fetched
+            "url": f"{self.base_url}/browse/{issue_key}"
         }
         
         return {

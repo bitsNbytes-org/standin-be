@@ -146,6 +146,54 @@ class ProjectWithDocumentsResponse(ProjectResponse):
 
     class Config:
         from_attributes = True
+# Standardized Document Content Schemas
+class ConfluenceDocumentContent(BaseModel):
+    """Standardized Confluence document content structure"""
+    page_id: str
+    title: str
+    space_name: str
+    content: str
+    html_content: str
+    url: str
+    created: str
+    updated: str
+    version: int
+
+
+class JiraDocumentContent(BaseModel):
+    """Standardized JIRA document content structure"""
+    issue_key: str
+    summary: str
+    description: str
+    issue_type: str
+    status: str
+    priority: str
+    assignee: str
+    reporter: str
+    project_name: str
+    project_key: str
+    epic_name: Optional[str] = None
+    epic_link: Optional[str] = None
+    created: str
+    updated: str
+    subtasks: List[dict] = []
+    comments: List[dict] = []
+    url: str
+
+
+class FileDocumentContent(BaseModel):
+    """Standardized file document content structure"""
+    original_filename: str
+    content_type: str
+    file_size: int
+    content: str
+    extraction_method: str
+    upload_timestamp: str
+    is_text_file: bool
+    is_document_file: bool
+    source_type: str = "file"
+
+
 # Comprehensive Document API Schemas
 class DocumentImportRequest(BaseModel):
     """Unified request for importing documents from various sources"""
