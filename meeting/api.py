@@ -1,5 +1,6 @@
 # API for managing meetings and scheduling
 
+from datetime import datetime
 import os
 from fastapi import (
     APIRouter,
@@ -110,13 +111,15 @@ async def import_meeting_document(
 
         if source == "url" and url and _handle_url_import:
             document_response = await _handle_url_import(
-                url, include_subtasks, db
+                source, url, include_subtasks, None, db
             )
         elif source == "file" and file and _handle_file_import:
-            document_response = await _handle_file_import(file, filename, db)
+            document_response = await _handle_file_import(
+                source, file, filename, None, db
+            )
         elif source == "content" and content and _handle_content_import:
             document_response = await _handle_content_import(
-                content, filename, db
+                source, content, filename, None, db
             )
 
         if document_response:
@@ -199,12 +202,52 @@ def schedule_google_calendar_event(meeting: Meeting) -> str:
 
 @router.post("/schedule", response_model=MeetingResponse)
 async def schedule_meeting(
-    meeting_data: MeetingCreate,
-    background_tasks: BackgroundTasks = BackgroundTasks(),
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    project_id: Optional[int] = Form(None),
+    start_time: datetime = Form(...),
+    end_time: datetime = Form(...),
+    attendees: Optional[str] = Form(None),  # Accept as string
+    additional_information: Optional[str] = Form(None),
+    document_source: Optional[str] = Form(None),
+    document_url: Optional[str] = Form(None),
+    document_filename: Optional[str] = Form(None),
+    document_content: Optional[str] = Form(None),
+    document_file: Optional[UploadFile] = File(None),
+    include_subtasks: bool = Form(True),
 ):
     """Schedule a new AI meeting with Google Calendar integration and document import"""
     try:
+        print("\n Attendees: ", attendees)
+        # Parse string inputs into lists
+        attendees_list = []
+        if attendees:
+            # Handle comma-separated strings, optionally with brackets
+            attendees_list = [
+                email.strip()
+                for email in attendees.strip("[]").split(",")
+                if email.strip()
+            ]
+
+        # Reconstruct the MeetingCreate object from form data
+        meeting_data = MeetingCreate(
+            title=title,
+            description=description,
+            project_id=project_id,
+            start_time=start_time,
+            end_time=end_time,
+            attendees=attendees_list,
+            additional_information=additional_information,
+            document_source=document_source,
+            document_url=document_url,
+            document_filename=document_filename,
+            document_content=document_content,
+            document_file=document_file,
+            include_subtasks=include_subtasks,
+        )
+
         # Validate project exists if provided
         if meeting_data.project_id:
             project = (
@@ -256,10 +299,7 @@ async def schedule_meeting(
 
         # Import document if provided (except file uploads)
         document_response = None
-        if (
-            meeting_data.document_source
-            and meeting_data.document_source != "file"
-        ):
+        if meeting_data.document_source:
             document_response = await import_meeting_document(
                 source=meeting_data.document_source,
                 meeting_id=meeting.id,
@@ -268,7 +308,7 @@ async def schedule_meeting(
                 filename=meeting_data.document_filename,
                 include_subtasks=meeting_data.include_subtasks,
                 content=meeting_data.document_content,
-                file=None,
+                file=meeting_data.document_file,
             )
 
         # Schedule in Google Calendar (background task)

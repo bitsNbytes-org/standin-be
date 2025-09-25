@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Optional, List
+from fastapi import UploadFile
 from models import DocumentType
 
 
@@ -182,7 +183,7 @@ class DocumentImportResponse(BaseModel):
     """Unified response for document imports"""
 
     document_id: int
-    source_type: str
+    source: str
     title: str
     filename: str
     bucket: str
@@ -210,7 +211,11 @@ class MeetingCreate(MeetingBase):
     document_url: Optional[str] = None
     document_filename: Optional[str] = None
     document_content: Optional[str] = None
+    document_file: Optional[UploadFile] = None
     include_subtasks: bool = True
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class MeetingResponse(MeetingBase):

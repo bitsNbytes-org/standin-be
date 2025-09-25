@@ -65,13 +65,19 @@ async def import_document(
         create_bucket_if_not_exists()
 
         if source == "url" and url:
-            return await _handle_url_import(url, include_subtasks, project_id, db)
+            return await _handle_url_import(
+                source, url, include_subtasks, project_id, db
+            )
 
         elif source == "file" and file:
-            return await _handle_file_import(file, filename, project_id, db)
+            return await _handle_file_import(
+                source, file, filename, project_id, db
+            )
 
         elif source == "content" and content:
-            return await _handle_content_import(content, filename, project_id, db)
+            return await _handle_content_import(
+                source, content, filename, project_id, db
+            )
 
         else:
             raise HTTPException(
@@ -88,7 +94,11 @@ async def import_document(
 
 
 async def _handle_url_import(
-    url: str, include_subtasks: bool, project_id: Optional[int], db: Session
+    source: str,
+    url: str,
+    include_subtasks: bool,
+    project_id: Optional[int],
+    db: Session,
 ) -> DocumentImportResponse:
     """Handle URL-based imports (Confluence/JIRA)"""
 
@@ -121,6 +131,7 @@ async def _handle_url_import(
             external_link=url,
             doc_type=DocumentType.CONFLUENCE,
             project_id=project_id,
+            source=source,
         )
 
         document = document_service.create_document(
@@ -129,7 +140,7 @@ async def _handle_url_import(
 
         return DocumentImportResponse(
             document_id=document.id,
-            source_type="confluence",
+            source="confluence",
             title=content_data["title"],
             filename=content_data["filename"],
             bucket=settings.MINIO_BUCKET_NAME,
@@ -189,6 +200,7 @@ async def _handle_url_import(
             external_link=url,
             doc_type=DocumentType.JIRA,
             project_id=project_id,
+            source=source,
         )
 
         document = document_service.create_document(
@@ -199,7 +211,7 @@ async def _handle_url_import(
         if url_info.get("url_type") == "board":
             return DocumentImportResponse(
                 document_id=document.id,
-                source_type="jira",
+                source="jira",
                 title=content_data["title"],
                 filename=content_data["filename"],
                 bucket=settings.MINIO_BUCKET_NAME,
@@ -214,7 +226,7 @@ async def _handle_url_import(
         else:
             return DocumentImportResponse(
                 document_id=document.id,
-                source_type="jira",
+                source="jira",
                 title=content_data["title"],
                 filename=content_data["filename"],
                 bucket=settings.MINIO_BUCKET_NAME,
@@ -233,7 +245,11 @@ async def _handle_url_import(
 
 
 async def _handle_file_import(
-    file: UploadFile, filename: Optional[str], project_id: Optional[int], db: Session
+    source: str,
+    file: UploadFile,
+    filename: Optional[str],
+    project_id: Optional[int],
+    db: Session,
 ) -> DocumentImportResponse:
     """Handle file upload imports"""
 
@@ -255,7 +271,7 @@ async def _handle_file_import(
 
     # Create metadata
     metadata = FileProcessor.create_file_metadata(file, content)
-    
+
     # Format content for storage
     formatted_content = FileProcessor.format_file_content(
         content, filename, file.content_type
@@ -270,13 +286,14 @@ async def _handle_file_import(
         external_link=None,
         doc_type=DocumentType.FILE,
         project_id=project_id,
+        source=source,
     )
 
     document = document_service.create_document(document, formatted_content)
 
     return DocumentImportResponse(
         document_id=document.id,
-        source_type="file",
+        source="file",
         title=f"Uploaded file: {filename}",
         filename=filename,
         bucket=settings.MINIO_BUCKET_NAME,
@@ -288,20 +305,24 @@ async def _handle_file_import(
 
 
 async def _handle_content_import(
-    content: str, filename: Optional[str], project_id: Optional[int], db: Session
+    source: str,
+    content: str,
+    filename: Optional[str],
+    project_id: Optional[int],
+    db: Session,
 ) -> DocumentImportResponse:
     """Handle direct content imports"""
 
     if not filename:
         filename = f"content-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.txt"
-    
+
     # Create metadata (simplified format)
     metadata = {
         "page_id": f"content-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}",
         "title": filename,
         "content": content,
         "url": "",
-        "source": "file"
+        "source": "file",
     }
 
     # Create document using DocumentService
@@ -313,13 +334,14 @@ async def _handle_content_import(
         external_link=None,
         doc_type=DocumentType.FILE,
         project_id=project_id,
+        source=source,
     )
 
     document = document_service.create_document(document, content)
 
     return DocumentImportResponse(
         document_id=document.id,
-        source_type="content",
+        source="content",
         title=f"Direct content: {filename}",
         filename=filename,
         bucket=settings.MINIO_BUCKET_NAME,
@@ -343,9 +365,13 @@ def create_document(document: DocumentCreate, db: Session = Depends(get_db)):
             external_link=document.external_link,
             doc_type=document.doc_type,
         )
-        
+
         # Store the content directly in MinIO
-        content = str(document.content) if not isinstance(document.content, str) else document.content
+        content = (
+            str(document.content)
+            if not isinstance(document.content, str)
+            else document.content
+        )
         db_document = document_service.create_document(db_document, content)
         return db_document
 
