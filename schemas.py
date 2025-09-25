@@ -1,6 +1,8 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, Union, List
+from fastapi import UploadFile
+from models import DocumentType
 
 
 # User schemas
@@ -41,6 +43,8 @@ class DocumentCreate(BaseModel):
     filename: str
     bucket: str = "default-bucket"
     project_id: Optional[int] = None
+    meeting_id: Optional[int] = None
+    doc_type: DocumentType = DocumentType.FILE
     external_link: Optional[str] = None
 
 
@@ -127,6 +131,8 @@ class DocumentResponse(BaseModel):
     filename: Optional[str] = None
     bucket: Optional[str] = None
     project_id: Optional[int] = None
+    meeting_id: Optional[int] = None
+    doc_type: DocumentType
     created_at: datetime
     updated_at: Optional[datetime] = None
     external_link: Optional[str] = None
@@ -142,6 +148,91 @@ class ProjectWithDocumentsResponse(ProjectResponse):
         from_attributes = True
 
 
+# Standardized Document Content Schemas
+class ConfluenceDocumentContent(BaseModel):
+    """Standardized Confluence document content structure"""
+
+    page_id: str
+    title: str
+    space_name: str
+    content: str
+    html_content: str
+    url: str
+    created: str
+    updated: str
+    version: int
+
+
+class JiraDocumentContent(BaseModel):
+    """Standardized JIRA document content structure"""
+
+    issue_key: str
+    summary: str
+    description: str
+    issue_type: str
+    status: str
+    priority: str
+    assignee: str
+    reporter: str
+    project_name: str
+    project_key: str
+    epic_name: Optional[str] = None
+    epic_link: Optional[str] = None
+    created: str
+    updated: str
+    subtasks: List[dict] = []
+    comments: List[dict] = []
+    url: str
+
+
+class FileDocumentContent(BaseModel):
+    """Standardized file document content structure"""
+
+    original_filename: str
+    content_type: str
+    file_size: int
+    content: str
+    extraction_method: str
+    upload_timestamp: str
+    is_text_file: bool
+    is_document_file: bool
+    source_type: str = "file"
+
+
+# Comprehensive Document API Schemas
+class DocumentImportRequest(BaseModel):
+    """Unified request for importing documents from various sources"""
+
+    source: str = Field(
+        ..., description="Source type: 'url', 'file', or 'content'"
+    )
+    url: Optional[str] = Field(
+        None, description="URL for Confluence or JIRA links"
+    )
+    filename: Optional[str] = Field(
+        None, description="Custom filename (auto-generated if not provided)"
+    )
+    include_subtasks: bool = Field(
+        True, description="Include subtasks for JIRA issues"
+    )
+    content: Optional[dict] = Field(
+        None, description="Raw content for direct import"
+    )
+
+
+class DocumentImportResponse(BaseModel):
+    """Unified response for document imports"""
+
+    document_id: int
+    source_type: str
+    title: str
+    filename: str
+    bucket: str
+    external_link: Optional[str] = None
+    message: str
+    metadata: Optional[dict] = None
+
+
 # Meeting schemas
 class MeetingBase(BaseModel):
     title: str
@@ -150,23 +241,30 @@ class MeetingBase(BaseModel):
     attendees: Optional[List[str]] = []  # List of attendee emails
     documentation_links: Optional[List[str]] = []  # List of documentation URLs
     additional_information: Optional[str] = None
-    meeting_link: Optional[str] = None  # Custom meeting room link
 
 
 class MeetingCreate(MeetingBase):
     start_time: datetime
     end_time: datetime
-    documents: Optional[List[dict]] = []  # Optional documents to create
+    meeting_link: Optional[str] = None  # Custom meeting room link
+    # Document import fields
+    document_source: Optional[str] = None  # "url", "file", "content"
+    document_url: Optional[str] = None
+    document_filename: Optional[str] = None
+    document_content: Optional[str] = None
+    include_subtasks: bool = True
 
 
 class MeetingResponse(MeetingBase):
     id: int
     start_time: datetime
     end_time: datetime
+    meeting_link: Optional[str] = None
     google_calendar_event_id: Optional[str] = None
     status: str = "scheduled"
     created_at: datetime
     updated_at: Optional[datetime] = None
+    documents: List[DocumentResponse] = []
 
     class Config:
         from_attributes = True

@@ -95,19 +95,35 @@ class GoogleCalendarService:
             if not self.authenticate():
                 return None
 
+        # Ensure datetime objects have timezone info
+        if start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=timezone.utc)
+        if end_time.tzinfo is None:
+            end_time = end_time.replace(tzinfo=timezone.utc)
+
+        # Validate time range
+        if end_time <= start_time:
+            logger.error(
+                f"Invalid time range: "
+                f"start_time={start_time}, end_time={end_time}"
+            )
+            return None
+
+        logger.info(f"Creating Google Calendar event: {title}")
+        logger.info(f"Start time: {start_time} ({start_time.isoformat()})")
+        logger.info(f"End time: {end_time} ({end_time.isoformat()})")
+
         # Prepare event data
         event_data = {
             "summary": f"[StandIn] {title}",
             "description": f"📅 Scheduled by StandIn Meeting Scheduler\n\n{description}",
             "start": {
                 "dateTime": start_time.isoformat(),
-                "timeZone": (
-                    str(start_time.tzinfo) if start_time.tzinfo else "UTC"
-                ),
+                "timeZone": "UTC",
             },
             "end": {
                 "dateTime": end_time.isoformat(),
-                "timeZone": str(end_time.tzinfo) if end_time.tzinfo else "UTC",
+                "timeZone": "UTC",
             },
             "attendees": [{"email": email} for email in attendees],
             "reminders": {
@@ -122,12 +138,14 @@ class GoogleCalendarService:
         # Add meeting link if provided
         if meeting_link:
             event_data["location"] = meeting_link
-            event_data["conferenceData"] = {
-                "createRequest": {
-                    "requestId": f"meeting_{int(datetime.now().timestamp())}",
-                    "conferenceSolutionKey": {"type": "hangoutsMeet"},
-                }
-            }
+            # Only add conference data if we want to create a Google Meet link
+            # For custom meeting links, just use location
+            # event_data["conferenceData"] = {
+            #     "createRequest": {
+            #         "requestId": f"meeting_{int(datetime.now().timestamp())}",
+            #         "conferenceSolutionKey": {"type": "hangoutsMeet"},
+            #     }
+            # }
 
         try:
             event = (
@@ -135,7 +153,6 @@ class GoogleCalendarService:
                 .insert(
                     calendarId=calendar_id,
                     body=event_data,
-                    conferenceDataVersion=1 if meeting_link else 0,
                     sendUpdates="all",  # Send invitations to all attendees
                 )
                 .execute()
@@ -179,20 +196,22 @@ class GoogleCalendarService:
             if title:
                 event["summary"] = f"[StandIn] {title}"
             if description:
-                event["description"] = f"📅 Scheduled by StandIn Meeting Scheduler\n\n{description}"
+                event["description"] = (
+                    f"📅 Scheduled by StandIn Meeting Scheduler\n\n{description}"
+                )
             if start_time:
+                if start_time.tzinfo is None:
+                    start_time = start_time.replace(tzinfo=timezone.utc)
                 event["start"] = {
                     "dateTime": start_time.isoformat(),
-                    "timeZone": (
-                        str(start_time.tzinfo) if start_time.tzinfo else "UTC"
-                    ),
+                    "timeZone": "UTC",
                 }
             if end_time:
+                if end_time.tzinfo is None:
+                    end_time = end_time.replace(tzinfo=timezone.utc)
                 event["end"] = {
                     "dateTime": end_time.isoformat(),
-                    "timeZone": (
-                        str(end_time.tzinfo) if end_time.tzinfo else "UTC"
-                    ),
+                    "timeZone": "UTC",
                 }
             if attendees:
                 event["attendees"] = [{"email": email} for email in attendees]

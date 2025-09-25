@@ -1,8 +1,15 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Enum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
 from sqlalchemy.dialects.postgresql import JSON, JSONB
+import enum
+
+
+class DocumentType(str, enum.Enum):
+    FILE = "file"
+    JIRA = "jira"
+    CONFLUENCE = "confluence"
 
 
 class User(Base):
@@ -52,6 +59,8 @@ class Meeting(Base):
 
     # Relationship with project
     project = relationship("Project", backref="meetings")
+    # Relationship with documents (one-to-many)
+    documents = relationship("Document", back_populates="meeting")
 
 
 class Document(Base):
@@ -62,9 +71,12 @@ class Document(Base):
     filename = Column(String(255), nullable=True)
     bucket = Column(String(255), nullable=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    meeting_id = Column(Integer, ForeignKey("meetings.id"), nullable=True)
+    doc_type = Column(Enum(DocumentType), nullable=False, default=DocumentType.FILE)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     external_link = Column(String(255), nullable=True)
 
-    # Relationship with project
+    # Relationships
     project = relationship("Project", back_populates="documents")
+    meeting = relationship("Meeting", back_populates="documents")

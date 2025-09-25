@@ -137,7 +137,7 @@ class JiraService:
         safe_summary = re.sub(r'[-\s]+', '-', safe_summary)
         filename = f"jira-{issue_key}-{safe_summary}.txt"
         
-        # Create JSON content for database storage
+        # Create JSON content for database storage (standardized format)
         json_content = {
             "issue_key": issue_key,
             "summary": summary,
@@ -149,6 +149,8 @@ class JiraService:
             "reporter": reporter,
             "project_name": project_name,
             "project_key": project_key,
+            "epic_name": fields.get("customfield_10015", "No epic"),  # Epic Name field
+            "epic_link": fields.get("customfield_10014", "No epic"),  # Epic Link field
             "created": created,
             "updated": updated,
             "subtasks": [
@@ -157,7 +159,9 @@ class JiraService:
                     "summary": st.get("fields", {}).get("summary"),
                     "status": st.get("fields", {}).get("status", {}).get("name")
                 } for st in subtasks
-            ] if subtasks else []
+            ] if subtasks else [],
+            "comments": [],  # Will be populated if comments are fetched
+            "url": f"{self.base_url}/browse/{issue_key}"
         }
         
         return {
@@ -364,7 +368,7 @@ class JiraService:
         filename = f"jira-{issue_key}-{safe_summary}.txt"
         
         # Create JSON content for database storage
-        json_content = {
+        content = {
             "issue_key": issue_key,
             "summary": summary,
             "description": description,
@@ -397,5 +401,163 @@ class JiraService:
             "project_key": project_key,
             "issue_type": issue_type,
             "status": status,
-            "json_content": json_content
+            "content": content
         }
+
+    def fetch_board_issues(self, project_key: str, board_id: str = None) -> Dict[str, Any]:
+        """Fetch all issues from a JIRA board/project with subtasks and comments"""
+        try:
+            # Get all issues for the project
+            jql = f"project = {project_key}"
+            issues = self.search_issues_by_jql(jql, max_results=1000)
+            
+            all_issues_data = []
+            total_issues = len(issues)
+            
+            for i, issue in enumerate(issues):
+                print(f"Processing issue {i+1}/{total_issues}: {issue.get('key', 'Unknown')}")
+                
+                # Get detailed issue information
+                issue_key = issue.get('key')
+                if not issue_key:
+                    continue
+                
+                detailed_issue = self.fetch_issue_by_key(issue_key)
+                if not detailed_issue:
+                    continue
+                
+                # Get subtasks
+                subtasks = self.fetch_issue_subtasks(issue_key)
+                
+                # Get comments
+                comments = self.fetch_issue_comments(issue_key)
+                
+                # Format issue content
+                issue_data = {
+                    "issue": detailed_issue,
+                    "subtasks": subtasks,
+                    "comments": comments,
+                    "issue_key": issue_key
+                }
+                
+                all_issues_data.append(issue_data)
+            
+            # Create comprehensive content
+            content_lines = [
+                f"# JIRA Board Import: {project_key}",
+                f"Total Issues: {total_issues}",
+                f"Import Date: {self._get_current_timestamp()}",
+                "",
+                "---",
+                ""
+            ]
+            
+            for issue_data in all_issues_data:
+                issue = issue_data["issue"]
+                issue_key = issue_data["issue_key"]
+                subtasks = issue_data["subtasks"]
+                comments = issue_data["comments"]
+                
+                # Add issue header
+                summary = issue.get("fields", {}).get("summary", "No Summary")
+                status = issue.get("fields", {}).get("status", {}).get("name", "Unknown")
+                issue_type = issue.get("fields", {}).get("issuetype", {}).get("name", "Unknown")
+                
+                content_lines.extend([
+                    f"## {issue_key}: {summary}",
+                    f"**Type:** {issue_type} | **Status:** {status}",
+                    ""
+                ])
+                
+                # Add issue description
+                description = issue.get("fields", {}).get("description", "")
+                if description:
+                    clean_description = self.clean_html_content(str(description))
+                    content_lines.extend([
+                        "### Description:",
+                        clean_description,
+                        ""
+                    ])
+                
+                # Add subtasks
+                if subtasks:
+                    content_lines.extend([
+                        "### Subtasks:",
+                        ""
+                    ])
+                    for subtask in subtasks:
+                        subtask_key = subtask.get("key", "Unknown")
+                        subtask_summary = subtask.get("fields", {}).get("summary", "No Summary")
+                        subtask_status = subtask.get("fields", {}).get("status", {}).get("name", "Unknown")
+                        content_lines.extend([
+                            f"- **{subtask_key}:** {subtask_summary} ({subtask_status})"
+                        ])
+                    content_lines.append("")
+                
+                # Add comments
+                if comments:
+                    content_lines.extend([
+                        "### Comments:",
+                        ""
+                    ])
+                    for comment in comments:
+                        author = comment.get("author", {}).get("displayName", "Unknown")
+                        created = comment.get("created", "Unknown Date")
+                        body = comment.get("body", "")
+                        clean_body = self.clean_html_content(str(body))
+                        content_lines.extend([
+                            f"**{author}** ({created}):",
+                            clean_body,
+                            ""
+                        ])
+                
+                content_lines.extend(["---", ""])
+            
+            # Create filename
+            safe_project = re.sub(r'[^\w\s-]', '', project_key).strip()
+            filename = f"jira-board-{safe_project}-{self._get_current_timestamp()}.txt"
+            
+            # Create JSON content for database
+            json_content = {
+                "project_key": project_key,
+                "board_id": board_id,
+                "total_issues": total_issues,
+                "import_timestamp": self._get_current_timestamp(),
+                "issues": all_issues_data,
+                "url": f"{self.base_url}/jira/software/projects/{project_key}/boards/{board_id}" if board_id else f"{self.base_url}/browse/{project_key}"
+            }
+            
+            return {
+                "title": f"JIRA Board Import: {project_key}",
+                "content": "\n".join(content_lines),
+                "filename": filename,
+                "project_key": project_key,
+                "board_id": board_id,
+                "total_issues": total_issues,
+                "json_content": json_content
+            }
+            
+        except Exception as e:
+            raise Exception(f"Error fetching board issues: {str(e)}")
+
+    def fetch_issue_comments(self, issue_key: str) -> List[Dict[str, Any]]:
+        """Fetch comments for a specific issue"""
+        try:
+            url = f"{self.base_url}/rest/api/3/issue/{issue_key}/comment"
+            response = requests.get(url, auth=self.auth, headers={"Accept": "application/json"})
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("comments", [])
+            else:
+                print(f"Failed to fetch comments for {issue_key}: {response.status_code}")
+                return []
+                
+        except Exception as e:
+            print(f"Error fetching comments for {issue_key}: {str(e)}")
+            return []
+
+    def _get_current_timestamp(self) -> str:
+        """Get current timestamp in a readable format"""
+        from datetime import datetime
+        return datetime.utcnow().strftime("%Y%m%d-%H%M%S")

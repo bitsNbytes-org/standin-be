@@ -8,16 +8,19 @@ class DocumentService:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_document(self, document: Document):
+    def create_document(self, document: Document, minio_content: str = None):
         self.db.add(document)
         self.db.commit()
         self.db.refresh(document)
         
-        # Store the JSON content as-is in MinIO
-        import json
-        json_content = json.dumps(document.content, indent=2)
+        # Use provided content for MinIO or fallback to JSON dump
+        if minio_content is not None:
+            content = minio_content
+        else:
+            import json
+            content = json.dumps(document.content, indent=2)
         
-        upload_file_content(json_content, str(document.id) + "_" + document.filename)
+        upload_file_content(content, str(document.id) + "_" + document.filename)
         return document
     
     def get_document(self, document_id: int):  #return the document

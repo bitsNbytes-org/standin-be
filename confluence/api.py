@@ -29,18 +29,27 @@ def pull_confluence_page(
         page_data = confluence_service.fetch_page_by_url(request.url)
         
         # Extract content
-        content_data = confluence_service.extract_page_content(page_data)
+        content_data = confluence_service.extract_page_content(page_data, request.url)
         
         # Ensure bucket exists
         create_bucket_if_not_exists()
         
         # Upload content to MinIO
         logger.info(f"Uploading content to MinIO: {content_data['filename']}")
-  
-    
+        upload_success = upload_file_content(
+            content_data['content'], 
+            content_data['filename']
+        )
+        
+        if not upload_success:
+            raise HTTPException(
+                status_code=500, 
+                detail="Failed to upload content to MinIO"
+            )
+        
         document_service = DocumentService(db)
         document = document_service.create_document(Document(
-            content={"content": content_data['content'], "html_content": content_data['html_content']},
+            content=content_data['json_content'],
             filename=content_data['filename'],
             bucket=request.bucket,
             external_link=request.url
