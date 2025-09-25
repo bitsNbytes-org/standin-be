@@ -10,9 +10,12 @@ from fastapi import (
     Form,
     File,
     UploadFile,
+    requests,
 )
 from sqlalchemy.orm import Session, joinedload
+from config import settings
 from database import get_db
+from meeting.service import create_narration
 from models import Meeting, Document, Project
 from schemas import (
     DocumentResponse,
@@ -313,6 +316,10 @@ async def schedule_meeting(
 
         # Schedule in Google Calendar (background task)
         background_tasks.add_task(schedule_google_calendar_event, meeting)
+        """ 
+        call an external api call to start creating narration for the meeting need to call it in background
+        """
+        background_tasks.add_task(create_narration, meeting, db)
 
         logger.info(f"Meeting {meeting.id} scheduled successfully")
         if document_response:

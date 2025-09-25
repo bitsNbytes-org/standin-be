@@ -151,6 +151,7 @@ class ProjectWithDocumentsResponse(ProjectResponse):
 # Simplified Document Content Schema
 class DocumentContent(BaseModel):
     """Simplified document content structure"""
+
     page_id: str
     title: str
     content: str
@@ -244,3 +245,18 @@ class MeetingUpdate(BaseModel):
     additional_information: Optional[str] = None
     meeting_link: Optional[str] = None
     status: Optional[str] = None
+
+
+class DocumentSchema(BaseModel):
+    id: int
+    content: str
+    filename: str
+    bucket: str
+    doc_type: DocumentType
+    external_link: Optional[str] = None
+
+
+class AIMeetingNarrationRequest(BaseModel):
+    documents: List[DocumentSchema]
+    attendee: str
+    duration: int
