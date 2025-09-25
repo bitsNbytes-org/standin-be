@@ -86,7 +86,7 @@ class ConfluenceService:
         except Exception as e:
             raise Exception(f"Error fetching page {page_id}: {str(e)}")
 
-    def extract_page_content(self, page_data: Dict[str, Any]) -> Dict[str, str]:
+    def extract_page_content(self, page_data: Dict[str, Any], url: str = None) -> Dict[str, str]:
         """Extract and process page content"""
         title = page_data.get("title", "Untitled")
         page_id = page_data.get("id", "")
@@ -112,5 +112,16 @@ class ConfluenceService:
             "filename": filename,
             "page_id": page_id,
             "space_name": space_name,
-            "html_content": body_html
+            "html_content": body_html,
+            "json_content": {
+                "page_id": page_id,
+                "title": title,
+                "space_name": space_name,
+                "content": text_content,
+                "html_content": body_html,
+                "url": url,
+                "created": page_data.get("created", ""),
+                "updated": page_data.get("updated", ""),
+                "version": page_data.get("version", {}).get("number", 1)
+            }
         }

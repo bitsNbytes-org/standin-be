@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, Union, List
+from fastapi import UploadFile
 
 
 # User schemas
@@ -140,3 +141,25 @@ class ProjectWithDocumentsResponse(ProjectResponse):
 
     class Config:
         from_attributes = True
+# Comprehensive Document API Schemas
+class DocumentImportRequest(BaseModel):
+    """Unified request for importing documents from various sources"""
+    source: str = Field(..., description="Source type: 'url', 'file', or 'content'")
+    url: Optional[str] = Field(None, description="URL for Confluence or JIRA links")
+    filename: Optional[str] = Field(None, description="Custom filename (auto-generated if not provided)")
+    include_subtasks: bool = Field(True, description="Include subtasks for JIRA issues")
+    content: Optional[dict] = Field(None, description="Raw content for direct import")
+
+
+class DocumentImportResponse(BaseModel):
+    """Unified response for document imports"""
+    document_id: int
+    source_type: str
+    title: str
+    filename: str
+    bucket: str
+    external_link: Optional[str] = None
+    message: str
+    metadata: Optional[dict] = None
+
+
