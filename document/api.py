@@ -379,3 +379,113 @@ def detect_url_type(url: str):
         logger.error(f"Error detecting URL type: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to detect URL type: {str(e)}")
 
+
+@router.put("/{document_id}/meeting")
+def update_document_meeting(document_id: int, meeting_data: dict, db: Session = Depends(get_db)):
+    """Update document to link it to a meeting"""
+    try:
+        # Check if document exists
+        document_service = DocumentService(db)
+        document = document_service.get_document(document_id)
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Get meeting_id from request body
+        meeting_id = meeting_data.get("meeting_id")
+        if meeting_id is None:
+            raise HTTPException(status_code=400, detail="meeting_id is required in request body")
+        
+        # Check if meeting exists
+        from models import Meeting
+        meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+        if not meeting:
+            raise HTTPException(status_code=404, detail="Meeting not found")
+        
+        # Update document with meeting_id
+        document.meeting_id = meeting_id
+        db.commit()
+        db.refresh(document)
+        
+        return {
+            "message": f"Document {document_id} successfully linked to meeting {meeting_id}",
+            "document_id": document_id,
+            "meeting_id": meeting_id,
+            "document": document
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating document {document_id} with meeting: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update document meeting: {str(e)}")
+
+
+@router.delete("/{document_id}/meeting")
+def remove_document_meeting(document_id: int, db: Session = Depends(get_db)):
+    """Remove meeting link from document (set meeting_id to None)"""
+    try:
+        # Check if document exists
+        document_service = DocumentService(db)
+        document = document_service.get_document(document_id)
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Remove meeting link
+        old_meeting_id = document.meeting_id
+        document.meeting_id = None
+        db.commit()
+        db.refresh(document)
+        
+        return {
+            "message": f"Document {document_id} successfully unlinked from meeting {old_meeting_id}",
+            "document_id": document_id,
+            "previous_meeting_id": old_meeting_id,
+            "document": document
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing meeting link from document {document_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to remove document meeting link: {str(e)}")
+
+
+@router.put("/{document_id}")
+def update_document(
+    document_id: int, 
+    document_update: dict, 
+    db: Session = Depends(get_db)
+):
+    """Update document fields (including meeting_id, doc_type, etc.)"""
+    try:
+        # Check if document exists
+        document_service = DocumentService(db)
+        document = document_service.get_document(document_id)
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Validate meeting_id if provided
+        if "meeting_id" in document_update and document_update["meeting_id"] is not None:
+            from models import Meeting
+            meeting = db.query(Meeting).filter(Meeting.id == document_update["meeting_id"]).first()
+            if not meeting:
+                raise HTTPException(status_code=404, detail="Meeting not found")
+        
+        # Update document fields
+        for field, value in document_update.items():
+            if hasattr(document, field):
+                setattr(document, field, value)
+        
+        db.commit()
+        db.refresh(document)
+        
+        return {
+            "message": f"Document {document_id} updated successfully",
+            "document_id": document_id,
+            "updated_fields": list(document_update.keys()),
+            "document": document
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating document {document_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update document: {str(e)}")
+
