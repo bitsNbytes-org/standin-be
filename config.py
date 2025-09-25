@@ -15,8 +15,6 @@ class Settings(BaseSettings):
     MINIO_SECRET_KEY: str = "minioadmin"
     MINIO_SECURE: bool = False
     MINIO_BUCKET_NAME: str = "fastapi-bucket"
-    
-
 
     # Application settings
     SECRET_KEY: str = "your-secret-key-change-in-production"
@@ -32,19 +30,19 @@ class Settings(BaseSettings):
     JIRA_USER: str = "your-email@example.com"
     JIRA_TOKEN: str = "your-jira-token"
 
-
     # Confluence settings
     CONFLUENCE_URL: str = "https://your-domain.atlassian.net"
     CONFLUENCE_USER: str = "your-email@example.com"
     CONFLUENCE_TOKEN: str = "your-confluence-token"
 
-
     # google calendar settings
     GOOGLE_CALENDAR_API_KEY: str = "your-google-calendar-api-key"
-    GOOGLE_CALENDAR_API_URL: str = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
+    GOOGLE_CALENDAR_API_URL: str = (
+        "https://www.googleapis.com/calendar/v3/calendars/primary/events"
+    )
 
+    EXTERNAL_SERVICE_URL: str = "https://fd3b0768cccc.ngrok-free.app"
 
- 
     class Config:
         env_file = ".env"
 

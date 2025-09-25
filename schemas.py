@@ -1,7 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-from typing import Optional, Union, List
-from fastapi import UploadFile
+from typing import Optional, List
 from models import DocumentType
 
 
@@ -146,6 +145,8 @@ class ProjectWithDocumentsResponse(ProjectResponse):
 
     class Config:
         from_attributes = True
+
+
 # Simplified Document Content Schema
 class DocumentContent(BaseModel):
     """Simplified document content structure"""
@@ -219,6 +220,7 @@ class MeetingResponse(MeetingBase):
     meeting_link: Optional[str] = None
     google_calendar_event_id: Optional[str] = None
     status: str = "scheduled"
+    pid: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     documents: List[DocumentResponse] = []
