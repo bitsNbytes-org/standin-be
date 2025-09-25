@@ -41,6 +41,7 @@ class Settings(BaseSettings):
         "https://www.googleapis.com/calendar/v3/calendars/primary/events"
     )
 
+    AI_MEETING_SERVICE_END_POINT: str = "http://localhost:8000"
     EXTERNAL_SERVICE_URL: str = "https://fd3b0768cccc.ngrok-free.app"
 
     class Config:

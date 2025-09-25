@@ -1,7 +1,8 @@
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-from typing import Optional, List
-from models import DocumentType
+from typing import Optional, Union, List
+from fastapi import UploadFile
+from models import Document, DocumentType
 
 
 # User schemas
@@ -239,3 +240,17 @@ class MeetingUpdate(BaseModel):
     additional_information: Optional[str] = None
     meeting_link: Optional[str] = None
     status: Optional[str] = None
+
+
+class DocumentSchema(BaseModel):
+    id: int
+    content: str
+    filename: str
+    bucket: str
+    doc_type: DocumentType
+    external_link: Optional[str] = None
+
+class AIMeetingNarrationRequest(BaseModel):
+    documents: List[DocumentSchema]
+    attendee: str
+    duration: int
