@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     GOOGLE_CALENDAR_API_KEY: str = "your-google-calendar-api-key"
     GOOGLE_CALENDAR_API_URL: str = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
 
+    AI_MEETING_SERVICE_END_POINT: str = "http://localhost:8000"
 
  
     class Config:
