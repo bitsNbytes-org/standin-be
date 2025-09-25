@@ -50,6 +50,7 @@ async def import_document(
     include_subtasks: bool = Form(True),
     content: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
+    project_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
     """
@@ -64,13 +65,13 @@ async def import_document(
         create_bucket_if_not_exists()
 
         if source == "url" and url:
-            return await _handle_url_import(url, include_subtasks, db)
+            return await _handle_url_import(url, include_subtasks, project_id, db)
 
         elif source == "file" and file:
-            return await _handle_file_import(file, filename, db)
+            return await _handle_file_import(file, filename, project_id, db)
 
         elif source == "content" and content:
-            return await _handle_content_import(content, filename, db)
+            return await _handle_content_import(content, filename, project_id, db)
 
         else:
             raise HTTPException(
@@ -87,7 +88,7 @@ async def import_document(
 
 
 async def _handle_url_import(
-    url: str, include_subtasks: bool, db: Session
+    url: str, include_subtasks: bool, project_id: Optional[int], db: Session
 ) -> DocumentImportResponse:
     """Handle URL-based imports (Confluence/JIRA)"""
 
@@ -119,6 +120,7 @@ async def _handle_url_import(
             bucket=settings.MINIO_BUCKET_NAME,
             external_link=url,
             doc_type=DocumentType.CONFLUENCE,
+            project_id=project_id,
         )
 
         document = document_service.create_document(
@@ -186,6 +188,7 @@ async def _handle_url_import(
             bucket=settings.MINIO_BUCKET_NAME,
             external_link=url,
             doc_type=DocumentType.JIRA,
+            project_id=project_id,
         )
 
         document = document_service.create_document(
@@ -230,7 +233,7 @@ async def _handle_url_import(
 
 
 async def _handle_file_import(
-    file: UploadFile, filename: Optional[str], db: Session
+    file: UploadFile, filename: Optional[str], project_id: Optional[int], db: Session
 ) -> DocumentImportResponse:
     """Handle file upload imports"""
 
@@ -266,6 +269,7 @@ async def _handle_file_import(
         bucket=settings.MINIO_BUCKET_NAME,
         external_link=None,
         doc_type=DocumentType.FILE,
+        project_id=project_id,
     )
 
     document = document_service.create_document(document, formatted_content)
@@ -284,7 +288,7 @@ async def _handle_file_import(
 
 
 async def _handle_content_import(
-    content: str, filename: Optional[str], db: Session
+    content: str, filename: Optional[str], project_id: Optional[int], db: Session
 ) -> DocumentImportResponse:
     """Handle direct content imports"""
 
@@ -308,6 +312,7 @@ async def _handle_content_import(
         bucket=settings.MINIO_BUCKET_NAME,
         external_link=None,
         doc_type=DocumentType.FILE,
+        project_id=project_id,
     )
 
     document = document_service.create_document(document, content)
