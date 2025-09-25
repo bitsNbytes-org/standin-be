@@ -11,3 +11,6 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-dotenv==1.0.0
 pydantic[email]
+atlassian-python-api==3.41.0
+beautifulsoup4==4.12.2
+requests==2.31.0

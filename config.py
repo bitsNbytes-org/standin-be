@@ -25,6 +25,24 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
 
+    # JIRA settings
+    JIRA_URL: str = "https://your-domain.atlassian.net"
+    JIRA_USER: str = "your-email@example.com"
+    JIRA_TOKEN: str = "your-jira-token"
+
+
+    # Confluence settings
+    CONFLUENCE_URL: str = "https://your-domain.atlassian.net"
+    CONFLUENCE_USER: str = "your-email@example.com"
+    CONFLUENCE_TOKEN: str = "your-confluence-token"
+
+
+    # google calendar settings
+    GOOGLE_CALENDAR_API_KEY: str = "your-google-calendar-api-key"
+    GOOGLE_CALENDAR_API_URL: str = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
+
+
+ 
     class Config:
         env_file = ".env"
 

@@ -5,10 +5,12 @@ from sqlalchemy.orm.session import Session
 import uvicorn
 from datetime import datetime
 
-from database import SessionLocal, engine, Base
+from database import engine, Base, get_db
 from models import User
 from schemas import UserResponse
-
+from document.api import router as document_api
+from confluence.api import router as confluence_api
+from jira.api import router as jira_api
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -30,12 +32,7 @@ app.add_middleware(
 
 
 # Dependency to get database session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+
 
 
 @app.get("/")
@@ -59,6 +56,12 @@ async def get_users(
 ):
     users = db.query(User).offset(skip).limit(limit).all()
     return users
+
+
+app.include_router(document_api, prefix="/document", tags=["document"])
+app.include_router(confluence_api, prefix="/api", tags=["confluence"])
+app.include_router(jira_api, prefix="/api", tags=["jira"])
+
 
 
 if __name__ == "__main__":
