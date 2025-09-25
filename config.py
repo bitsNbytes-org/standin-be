@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     MINIO_SECRET_KEY: str = "minioadmin"
     MINIO_SECURE: bool = False
     MINIO_BUCKET_NAME: str = "fastapi-bucket"
+    
+
 
     # Application settings
     SECRET_KEY: str = "your-secret-key-change-in-production"
