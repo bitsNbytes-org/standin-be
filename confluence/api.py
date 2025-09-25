@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.post("/confluence/pull", response_model=ConfluencePageResponse)
+@router.post("/pull", response_model=ConfluencePageResponse)
 def pull_confluence_page(
     request: ConfluencePageRequest, 
     db: Session = Depends(get_db)
@@ -64,7 +64,7 @@ def pull_confluence_page(
         raise HTTPException(status_code=500, detail=f"Failed to pull Confluence page: {str(e)}")
 
 
-@router.get("/confluence/test")
+@router.get("/test")
 def test_confluence_connection():
     """
     Test Confluence connection

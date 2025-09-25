@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 
 # User schemas
@@ -40,11 +40,14 @@ class DocumentCreate(BaseModel):
     content: dict
     filename: str
     bucket: str = "default-bucket"
+    project_id: Optional[int] = None
     external_link: Optional[str] = None
+
 
 class ConfluencePageRequest(BaseModel):
     url: str
     bucket: str = "confluence-docs"
+
 
 class ConfluencePageResponse(BaseModel):
     document_id: int
@@ -98,3 +101,42 @@ class JiraProjectImportResponse(BaseModel):
     processed_count: int
     failed_count: int
     message: str
+
+
+# Project schemas
+class ProjectBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class ProjectCreate(ProjectBase):
+    pass
+
+
+class ProjectResponse(ProjectBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DocumentResponse(BaseModel):
+    id: int
+    content: Optional[dict] = None
+    filename: Optional[str] = None
+    bucket: Optional[str] = None
+    project_id: Optional[int] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    external_link: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ProjectWithDocumentsResponse(ProjectResponse):
+    documents: List[DocumentResponse] = []
+
+    class Config:
+        from_attributes = True
