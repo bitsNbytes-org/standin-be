@@ -146,6 +146,8 @@ class ProjectWithDocumentsResponse(ProjectResponse):
 
     class Config:
         from_attributes = True
+
+
 # Simplified Document Content Schema
 class DocumentContent(BaseModel):
     """Simplified document content structure"""
@@ -219,6 +221,7 @@ class MeetingResponse(MeetingBase):
     meeting_link: Optional[str] = None
     google_calendar_event_id: Optional[str] = None
     status: str = "scheduled"
+    pid: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     documents: List[DocumentResponse] = []
