@@ -76,6 +76,7 @@ class Document(Base):
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     meeting_id = Column(Integer, ForeignKey("meetings.id"), nullable=True)
     doc_type = Column(Enum(DocumentType), default=DocumentType.FILE, nullable=False)
+    source = Column(String(50), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     external_link = Column(String(255), nullable=True)

@@ -23,7 +23,7 @@ def upgrade() -> None:
     op.add_column('documents', sa.Column('meeting_id', sa.Integer(), nullable=True))
     
     # Create the enum type first
-    documenttype_enum = sa.Enum('FILE', 'JIRA', 'CONFLUENCE', name='documenttype')
+    documenttype_enum = sa.Enum('FILE', 'JIRA', 'CONFLUENCE', name='documenttypeenum')
     documenttype_enum.create(op.get_bind())
     
     # Add doc_type column with default value for existing records
@@ -46,6 +46,6 @@ def downgrade() -> None:
     op.drop_column('documents', 'meeting_id')
     
     # Drop the enum type
-    documenttype_enum = sa.Enum('FILE', 'JIRA', 'CONFLUENCE', name='documenttype')
+    documenttype_enum = sa.Enum('FILE', 'JIRA', 'CONFLUENCE', name='documenttypeenum')
     documenttype_enum.drop(op.get_bind())
     # ### end Alembic commands ###

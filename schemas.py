@@ -1,8 +1,8 @@
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-from typing import Optional, Union, List
+from typing import Optional, List
 from fastapi import UploadFile
-from models import Document, DocumentType
+from models import DocumentType
 
 
 # User schemas
@@ -151,6 +151,7 @@ class ProjectWithDocumentsResponse(ProjectResponse):
 # Simplified Document Content Schema
 class DocumentContent(BaseModel):
     """Simplified document content structure"""
+
     page_id: str
     title: str
     content: str
@@ -183,7 +184,7 @@ class DocumentImportResponse(BaseModel):
     """Unified response for document imports"""
 
     document_id: int
-    source_type: str
+    source: str
     title: str
     filename: str
     bucket: str
@@ -211,7 +212,11 @@ class MeetingCreate(MeetingBase):
     document_url: Optional[str] = None
     document_filename: Optional[str] = None
     document_content: Optional[str] = None
+    document_file: Optional[UploadFile] = None
     include_subtasks: bool = True
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class MeetingResponse(MeetingBase):
@@ -249,6 +254,7 @@ class DocumentSchema(BaseModel):
     bucket: str
     doc_type: DocumentType
     external_link: Optional[str] = None
+
 
 class AIMeetingNarrationRequest(BaseModel):
     documents: List[DocumentSchema]
