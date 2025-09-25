@@ -48,6 +48,10 @@ MEETING_BASE_URL = os.getenv(
     "MEETING_BASE_URL", "http://localhost:3000/meetings"
 )
 
+EXTERNAL_SERVICE_URL = os.getenv(
+    "EXTERNAL_SERVICE_URL", "https://fd3b0768cccc.ngrok-free.app"
+)
+
 
 def create_meeting_documents(
     documents_data: List[dict], meeting_id: int, db: Session
@@ -252,7 +256,10 @@ async def schedule_meeting(
 
         # Import document if provided (except file uploads)
         document_response = None
-        if meeting_data.document_source and meeting_data.document_source != "file":
+        if (
+            meeting_data.document_source
+            and meeting_data.document_source != "file"
+        ):
             document_response = await import_meeting_document(
                 source=meeting_data.document_source,
                 meeting_id=meeting.id,
@@ -412,9 +419,6 @@ def complete_meeting(meeting_id: int, db: Session = Depends(get_db)):
     return {"message": f"Meeting {meeting_id} marked as completed"}
 
 
-EXTERNAL_SERVICE_URL = "https://a7eefabb7d57.ngrok-free.app"
-
-
 @router.post("/{meeting_id}/start", response_model=MeetingResponse)
 def start_meeting(meeting_id: int, db: Session = Depends(get_db)):
     """Start a meeting and get a process ID from an external service."""
@@ -423,7 +427,9 @@ def start_meeting(meeting_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Meeting not found")
 
     if meeting.status == "started":
-        raise HTTPException(status_code=400, detail="Meeting has already started")
+        raise HTTPException(
+            status_code=400, detail="Meeting has already started"
+        )
 
     try:
         response = requests.post(f"{EXTERNAL_SERVICE_URL}/start")
@@ -433,7 +439,8 @@ def start_meeting(meeting_id: int, db: Session = Depends(get_db)):
 
         if pid is None:
             raise HTTPException(
-                status_code=500, detail="Failed to get PID from external service"
+                status_code=500,
+                detail="Failed to get PID from external service",
             )
 
         meeting.status = "started"
@@ -468,7 +475,9 @@ def stop_meeting(meeting_id: int, db: Session = Depends(get_db)):
         )
 
     try:
-        response = requests.post(f"{EXTERNAL_SERVICE_URL}/stop?pid={meeting.pid}")
+        response = requests.post(
+            f"{EXTERNAL_SERVICE_URL}/stop?pid={meeting.pid}"
+        )
         response.raise_for_status()
 
         meeting.status = "completed"
