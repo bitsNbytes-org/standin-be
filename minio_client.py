@@ -2,6 +2,7 @@ from minio import Minio
 from minio.error import S3Error
 import logging
 from config import settings
+from io import BytesIO
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -44,15 +45,28 @@ def upload_file(file_path: str, object_name: str = None):
         logger.error(f"Error uploading file: {e}")
         return False
 
-
-def download_file(object_name: str, file_path: str):
+# need to give the content of the file as response
+def download_file(object_name: str):
     """Download a file from MinIO bucket"""
     try:
-        minio_client.fget_object(BUCKET_NAME, object_name, file_path)
-        logger.info(f"File '{object_name}' downloaded to '{file_path}'")
-        return True
+        response = minio_client.get_object(BUCKET_NAME, object_name)
+        return response.data
+       
     except S3Error as e:
         logger.error(f"Error downloading file: {e}")
+        return None
+
+
+def upload_file_content(content: str, object_name: str):
+    """Upload a file content to MinIO bucket"""
+    try:
+        # Convert string content to BytesIO object
+        content_bytes = BytesIO(content.encode('utf-8'))
+        minio_client.put_object(BUCKET_NAME, object_name, content_bytes, length=len(content.encode('utf-8')))
+        logger.info(f"File content uploaded to '{object_name}'")
+        return True
+    except S3Error as e:
+        logger.error(f"Error uploading file content: {e}")
         return False
 
 
